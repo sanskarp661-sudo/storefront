@@ -82,6 +82,7 @@ https://store.mosaicengine.in/webhooks/erp.php
 
 ### 6. Check it
 
+- Open **https://store.mosaicengine.in/status.php**. It checks the PHP version and extensions, `config.php`, the database connection and tables, the ERP API key, the cron sync, orders and webhooks, and tells you how to fix anything that fails. It never shows passwords or keys.
 - Open https://store.mosaicengine.in. After the first cron run, products appear.
 - Place a test order. It should show up in the ERP as a pending sales order, with `Payment: Cash on Delivery (COD)` at the top of its notes.
 - Change the order's status in the ERP. The order page on the store should show the new status straight away.
@@ -96,6 +97,7 @@ SSL: `.htaccess` redirects HTTP to HTTPS, so the subdomain needs its (free) SSL 
 | --- | --- |
 | `index.php`, `products.php`, `product.php` | Home, catalogue (search, category/brand filters, in-stock, sort, pages), product page |
 | `cart.php`, `checkout.php` | Session cart; checkout form that places the order |
+| `status.php` | Setup self-check (pass/fail for each part; shows no secrets) |
 | `order.php`, `track.php` | Order confirmation / status page (private link); "Track my order" lookup |
 | `webhooks/erp.php` | ERP webhook receiver |
 | `cron/sync_products.php` | Cron job (command line only; refuses web requests) |
