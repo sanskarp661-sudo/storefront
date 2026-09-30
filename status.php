@@ -83,16 +83,21 @@ $add('ERP API', 'API key accepted (categories.php)', $cached['state'], $cached['
 if ($dbOk && empty($missing)) {
     $sync = db_one("SELECT last_run_at, last_full_at, last_error, lease_until FROM sync_state WHERE name = 'catalog'");
     $active = (int) db_one("SELECT COUNT(*) AS n FROM products WHERE status = 'active'")['n'];
-    $cronHint = 'Add the Cron Job from the README (every 15 minutes) and wait for it to run.';
-    if (!$sync || !$sync['last_run_at']) {
-        $state = $sync && $sync['last_error'] ? 'fail' : 'warn';
-        $add('Catalogue sync', 'Cron has run', $state,
-            $sync && $sync['last_error'] ? 'Last attempt failed: ' . mb_substr($sync['last_error'], 0, 200) : 'No sync has completed yet', $cronHint);
+    $cronHint = 'Add the Cron Job from the README and wait for it to run.';
+    if (!$sync) {
+        $add('Catalogue sync', 'Cron has run', 'warn', 'The cron job has not reached the store yet',
+            'Check the Cron Job command: the /home/u…/ username and the path to cron/sync_products.php must match File Manager exactly. hPanel → Cron Jobs → View output shows any error.');
+    } elseif (!$sync['last_run_at'] && $sync['lease_until'] && strtotime($sync['lease_until'] . ' UTC') > time()) {
+        $add('Catalogue sync', 'Cron has run', 'info', 'The first sync is running right now', 'Reload this page in a minute.');
+    } elseif (!$sync['last_run_at']) {
+        $add('Catalogue sync', 'Cron has run', $sync['last_error'] ? 'fail' : 'warn',
+            $sync['last_error'] ? 'Last attempt failed: ' . mb_substr($sync['last_error'], 0, 200) : 'The cron job started but no sync has completed yet',
+            'hPanel → Cron Jobs → View output shows the full error.');
     } else {
         $age = time() - strtotime($sync['last_run_at'] . ' UTC');
         $add('Catalogue sync', 'Cron has run', $age < 45 * 60 ? 'ok' : 'warn',
             'Last successful sync ' . ($age < 120 ? "$age seconds" : round($age / 60) . ' minutes') . ' ago',
-            'The last sync is over 45 minutes old: check the Cron Job is still scheduled every 15 minutes.');
+            'The last sync is over 45 minutes old: check the Cron Job is still scheduled.');
         if ($sync['last_error']) $add('Catalogue sync', 'Last sync error', 'warn', mb_substr($sync['last_error'], 0, 200));
     }
     $add('Catalogue sync', 'Products in the store', $active > 0 ? 'ok' : 'warn', "$active active products", $cronHint);

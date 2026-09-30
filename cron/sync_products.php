@@ -10,6 +10,10 @@ if (PHP_SAPI !== 'cli') {
     http_response_code(403);
     exit('Forbidden');
 }
+if (PHP_VERSION_ID < 80100) {
+    fwrite(STDERR, 'This script needs PHP 8.1 or newer, but cron ran PHP ' . PHP_VERSION . ". Use /usr/bin/php8.3 (or /opt/alt/php83/usr/bin/php) in the Cron Job command.\n");
+    exit(1);
+}
 define('NO_SESSION', true);
 require dirname(__DIR__) . '/includes/bootstrap.php';
 
