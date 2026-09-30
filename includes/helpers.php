@@ -171,6 +171,7 @@ function render_page(string $title, callable $body, array $options = []): void
     $pageTitle = $title === '' ? STORE_NAME : $title . ' · ' . STORE_NAME;
     $noindex = $options['noindex'] ?? false;
     $description = $options['description'] ?? 'Quality products, delivered across India.';
+    $activeNav = $options['active'] ?? '';
     require __DIR__ . '/templates/header.php';
     $body();
     require __DIR__ . '/templates/footer.php';
@@ -185,14 +186,9 @@ function render_error_page(int $code): void
     [$heading, $text] = $messages[$code] ?? $messages[500];
     http_response_code($code);
     try {
-        render_page($heading, function () use ($code, $heading, $text) { ?>
-            <div class="container-page max-w-xl py-24 text-center">
-                <?php if ($code === 404): ?><p class="font-mono text-sm text-accent">404</p><?php endif; ?>
-                <h1 class="mt-2 text-3xl font-semibold tracking-tight"><?= e($heading) ?></h1>
-                <p class="mt-2 text-ink-soft"><?= e($text) ?></p>
-                <a href="<?= e(url('products.php')) ?>" class="btn btn-primary mt-8">Browse products</a>
-            </div>
-        <?php });
+        render_page($heading, function () use ($code, $heading, $text) {
+            echo '<div class="container-page max-w-2xl py-12">' . empty_state($code === 404 ? 'search' : 'triangle-alert', ($code === 404 ? '404 · ' : '') . $heading, $text, url('products.php'), 'Browse products') . '</div>';
+        });
     } catch (Throwable $e) {
         // The layout itself failed (e.g. database down): fall back to plain text.
         error_log('[storefront] error page failed: ' . $e);

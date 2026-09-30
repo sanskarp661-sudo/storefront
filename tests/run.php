@@ -7,6 +7,7 @@ require APP_ROOT . '/includes/signature.php';
 require APP_ROOT . '/includes/india.php';
 require APP_ROOT . '/includes/icons.php';
 require APP_ROOT . '/includes/helpers.php';
+require APP_ROOT . '/includes/auth.php';
 
 $failures = 0;
 function check(string $name, bool $ok): void
@@ -44,6 +45,14 @@ check('₹999.50', format_price(999.5) === '₹999.50');
 check('₹1,234.00', format_price(1234) === '₹1,234.00');
 check('₹1,23,456.78', format_price(123456.78) === '₹1,23,456.78');
 check('₹1,23,45,678.00', format_price(12345678) === '₹1,23,45,678.00');
+
+echo "Post-login redirects\n";
+check('keeps a same-site path', safe_return_url('/checkout.php?x=1', '/fallback') === '/checkout.php?x=1');
+check('rejects another site', safe_return_url('https://evil.example', '/fallback') === '/fallback');
+check('rejects protocol-relative //', safe_return_url('//evil.example/x', '/fallback') === '/fallback');
+check('rejects backslash tricks', safe_return_url('/\\evil.example', '/fallback') === '/fallback');
+check('rejects header injection', safe_return_url("/ok\r\nSet-Cookie: x=1", '/fallback') === '/fallback');
+check('rejects empty', safe_return_url('', '/fallback') === '/fallback');
 
 echo $failures ? "\n$failures test(s) failed\n" : "\nAll tests passed\n";
 exit($failures ? 1 : 0);

@@ -54,11 +54,13 @@ try {
 }
 
 if ($dbOk) {
-    $expected = ['products', 'categories', 'sync_state', 'orders', 'order_items', 'order_events'];
+    $expected = ['products', 'categories', 'sync_state', 'orders', 'order_items', 'order_events', 'customers', 'customer_addresses', 'wishlist_items', 'password_resets'];
     $present = db_query('SHOW TABLES')->fetchAll(PDO::FETCH_COLUMN);
     $missing = array_values(array_diff($expected, $present));
-    $add('Database', 'Tables (6)', $missing ? 'fail' : 'ok', $missing ? 'Missing: ' . implode(', ', $missing) : 'All present',
-        'Import sql/schema.sql in phpMyAdmin (it is safe to run again).');
+    $add('Database', 'Tables (' . count($expected) . ')', $missing ? 'fail' : 'ok', $missing ? 'Missing: ' . implode(', ', $missing) : 'All present, including customer accounts',
+        'Import sql/schema.sql in phpMyAdmin (it is safe to run again). Account tables are otherwise created automatically on the next page view.');
+    $add('Server', 'Email (password reset)', function_exists('mail') ? 'ok' : 'warn', function_exists('mail') ? 'mail() available, sending from ' . ((defined('MAIL_FROM') && MAIL_FROM) ? MAIL_FROM : SUPPORT_EMAIL) : 'mail() is disabled',
+        'Password-reset emails need PHP mail(); create the sender mailbox in hPanel → Emails if messages don\'t arrive.');
 }
 
 // --- ERP API (checked at most once a minute) ---------------------------------

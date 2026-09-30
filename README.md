@@ -5,6 +5,7 @@ It has no framework, no Composer and no build step on the server.
 
 - **Catalogue** is copied from the ERP into the store's own MySQL database by a cron job, and pages are served from that copy.
 - **Cart** is held in the PHP session. **Checkout** sends the order to the ERP from PHP (cURL). **Cash on Delivery** is the only payment method for now.
+- **Customer accounts** (optional; guest checkout stays the default): profile, order history, saved addresses, wishlist and password reset.
 - **Order status** stays current through the ERP's signed webhook. If a webhook is missed, the store polls `order_status.php`.
 - The ERP API key is used only by PHP on the server. It never appears in any page or JavaScript.
 
@@ -97,6 +98,9 @@ SSL: `.htaccess` redirects HTTP to HTTPS, so the subdomain needs its (free) SSL 
 | --- | --- |
 | `index.php`, `products.php`, `product.php` | Home, catalogue (search, category/brand filters, in-stock, sort, pages), product page |
 | `cart.php`, `checkout.php` | Session cart; checkout form that places the order |
+| `login.php`, `register.php`, `logout.php`, `forgot-password.php`, `reset-password.php` | Customer sign-in, sign-up and password reset |
+| `account.php` | Account dashboard: overview, orders, wishlist, saved addresses, profile & password |
+| `wishlist.php`, `search_suggest.php` | Wishlist add/remove; live search suggestions (JSON, public data only) |
 | `status.php` | Setup self-check (pass/fail for each part; shows no secrets) |
 | `order.php`, `track.php` | Order confirmation / status page (private link); "Track my order" lookup |
 | `webhooks/erp.php` | ERP webhook receiver |
@@ -141,6 +145,26 @@ order notes. To add online payment later, see the comment at the top of `include
 - Each order has a private link: `order.php?id=WEB-…&key=<random>`.
 - "Track my order" needs the order number and the checkout email, and is limited to 10 lookups per 10 minutes per browser session.
 - Orders placed in the same browser session are listed on the track page.
+
+**Customer accounts.**
+- Guest checkout stays the default. Signing in is optional, and the checkout offers it without requiring it.
+- After a guest order, the confirmation page offers "Set a password to create your account". That saves the order and
+  the address to the new account.
+- Signed-in customers get their details filled in at checkout and can pick a saved address. Their orders appear in
+  **My orders**.
+- A guest order is added to a signed-in account when the customer opens its private link with the same email.
+- Passwords are stored with `password_hash()`. The session is regenerated on sign-in. 5 wrong passwords lock the
+  account for 15 minutes.
+- Password-reset links are single-use and expire after 60 minutes. They are sent with PHP `mail()` from `SUPPORT_EMAIL`,
+  or from `MAIL_FROM` if set. That address should be a real mailbox on your domain (hPanel → Emails).
+- The account tables are created automatically on existing installs by `includes/migrate.php`, with no SQL import needed.
+  `status.php` confirms they are there.
+
+**Design.**
+- Tailwind CSS, compiled into `assets/css/store.css`. Brand colour indigo (`#4f46e5`), call-to-action colour orange,
+  font Plus Jakarta Sans.
+- Products are shown whole on white. Products without a photo get a tinted tile with their initials and a category icon.
+- Mobile gets a bottom tab bar, a slide-in menu and filter drawer, and a sticky Add to cart / Buy now bar on product pages.
 
 **Security.**
 - `config.php`, `includes/`, `cron/`, `sql/`, `tests/`, `tools/`, `.git` and dotfiles return 403 (`.htaccess`).

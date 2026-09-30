@@ -21,6 +21,8 @@ define('ERP_WEBHOOK_SECRET', 'your-erp-api-key');
 // --- Store settings ---
 define('STORE_NAME', 'Mosaic Store');
 define('SUPPORT_EMAIL', 'sanskar@mosaicengine.in');
+// Optional: sender for password-reset emails (a mailbox on your domain). Defaults to SUPPORT_EMAIL.
+// define('MAIL_FROM', 'no-reply@mosaicengine.in');
 // Public address of the site, no trailing slash.
 define('SITE_URL', 'https://store.mosaicengine.in');
 // Payment methods offered at checkout, comma-separated; the first is the default. Currently available: cod

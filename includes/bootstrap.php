@@ -49,7 +49,17 @@ require __DIR__ . '/sync.php';
 require __DIR__ . '/cart.php';
 require __DIR__ . '/orders.php';
 require __DIR__ . '/signature.php';
+require __DIR__ . '/migrate.php';
+require __DIR__ . '/auth.php';
+require __DIR__ . '/mail.php';
 require __DIR__ . '/templates/partials.php';
+require __DIR__ . '/templates/auth_shell.php';
+
+try {
+    ensure_schema();
+} catch (Throwable $e) {
+    error_log('[storefront] schema upgrade failed: ' . $e->getMessage());
+}
 
 if (PHP_SAPI !== 'cli') {
     header('X-Content-Type-Options: nosniff');

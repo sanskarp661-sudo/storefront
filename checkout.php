@@ -8,18 +8,29 @@ function checkout_key(bool $rotate = false): string
     return $_SESSION['checkout_key'];
 }
 
+$customer = current_customer();
+$saved = $customer ? customer_addresses((int) $customer['id']) : [];
+$methods = enabled_payment_methods();
 $errors = [];
 $formError = null;
 $issueMessages = [];
-$values = ['name' => '', 'email' => '', 'phone' => '', 'company' => '', 'label' => 'Home', 'address_line' => '', 'city' => '', 'state' => '', 'pincode' => '', 'notes' => '', 'payment_method' => ''];
-$methods = enabled_payment_methods();
+$values = ['name' => $customer['name'] ?? '', 'email' => $customer['email'] ?? '', 'phone' => $customer['phone'] ?? '', 'company' => '',
+    'label' => 'Home', 'address_line' => '', 'city' => '', 'state' => '', 'pincode' => '', 'notes' => '', 'payment_method' => '',
+    'address_id' => $saved ? (string) $saved[0]['id'] : 'new', 'save_address' => '1'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_csrf();
     foreach (array_keys($values) as $k) $values[$k] = post_string($k, $k === 'notes' ? 500 : 300);
+    if (post_string('website') !== '') redirect(url('checkout.php')); // honeypot
 
-    // Honeypot: real customers never see or fill this field.
-    if (post_string('website') !== '') redirect(url('checkout.php'));
+    // A saved address (signed-in customers) replaces the typed address fields.
+    $useSaved = $customer && $values['address_id'] !== 'new' ? customer_address((int) $customer['id'], (int) $values['address_id']) : null;
+    if ($useSaved) {
+        foreach (['label', 'address_line', 'city', 'state', 'pincode'] as $k) $values[$k] = $useSaved[$k];
+        if ($values['phone'] === '') $values['phone'] = $useSaved['phone'];
+    } else {
+        $values['address_id'] = 'new';
+    }
 
     $phone = normalize_indian_phone($values['phone']);
     if (mb_strlen($values['name']) < 2) $errors['name'] = 'Please enter your full name';
@@ -43,6 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $result = place_order([
             'checkout_key' => $key,
+            'customer_id' => $customer['id'] ?? null,
             'name' => $values['name'],
             'email' => $values['email'],
             'phone' => $phone,
@@ -59,6 +71,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($result['ok']) {
             $order = $result['order'];
+            if ($customer && !$useSaved && $values['save_address'] === '1') {
+                save_address((int) $customer['id'], ['label' => $values['label'], 'name' => $values['name'], 'phone' => $phone,
+                    'address_line' => $values['address_line'], 'city' => $values['city'], 'state' => $values['state'], 'pincode' => $values['pincode']]);
+            }
+            if ($customer && !$customer['phone']) db_query('UPDATE customers SET phone = ? WHERE id = ?', [$phone, $customer['id']]);
             cart_clear();
             checkout_key(true);
             $_SESSION['recent_orders'][$order['website_order_id']] = ['key' => $order['access_token'], 'placed_at' => gmdate('c')];
@@ -78,127 +95,147 @@ $cart = cart_contents();
 $key = checkout_key();
 if (!in_array($values['payment_method'], array_column($methods, 'id'), true)) $values['payment_method'] = $methods[0]['id'];
 
-$field = function (string $name, string $label, array $attrs = [], string $class = '', string $hint = '') use ($values, $errors): string {
-    $attrHtml = '';
-    foreach ($attrs as $k => $v) $attrHtml .= $v === true ? ' ' . e($k) : ' ' . e($k) . '="' . e((string) $v) . '"';
-    $error = $errors[$name] ?? null;
-    return '<div class="' . e($class) . '"><label class="field-label" for="' . e($name) . '">' . e($label) . '</label>'
-        . '<input id="' . e($name) . '" name="' . e($name) . '" value="' . e($values[$name]) . '" class="field-input"'
-        . ($error ? ' aria-invalid="true" aria-describedby="' . e($name) . '-error"' : '') . $attrHtml . '>'
-        . ($error ? '<p id="' . e($name) . '-error" class="mt-1 text-xs text-red-600">' . e($error) . '</p>' : ($hint ? '<p class="mt-1 text-xs text-ink-soft">' . e($hint) . '</p>' : ''))
-        . '</div>';
-};
+render_page('Checkout', function () use ($cart, $key, $values, $errors, $formError, $issueMessages, $methods, $customer, $saved) {
+    $step = fn(int $n, string $title, string $sub = '') => '<div class="mb-5 flex items-center gap-3"><span class="flex h-8 w-8 items-center justify-center rounded-full bg-brand text-sm font-extrabold text-white">' . $n . '</span><div><h2 class="text-lg font-extrabold leading-tight">' . e($title) . '</h2>' . ($sub ? '<p class="text-xs text-ink-soft">' . e($sub) . '</p>' : '') . '</div></div>';
+    ?>
+<div class="container-page py-8">
+  <div class="mb-6 flex flex-wrap items-end justify-between gap-3">
+    <h1 class="text-3xl font-extrabold tracking-tight">Checkout</h1>
+    <ol class="hidden items-center gap-2 text-xs font-bold sm:flex">
+      <li class="flex items-center gap-2 text-success"><span class="flex h-6 w-6 items-center justify-center rounded-full bg-success text-white"><?= icon('check', 'h-3.5 w-3.5', 3) ?></span> Cart</li><li class="h-px w-8 bg-success"></li>
+      <li class="flex items-center gap-2 text-brand"><span class="flex h-6 w-6 items-center justify-center rounded-full bg-brand text-white">2</span> Details</li><li class="h-px w-8 bg-line"></li>
+      <li class="flex items-center gap-2 text-muted"><span class="flex h-6 w-6 items-center justify-center rounded-full bg-slate-200">3</span> Confirmation</li>
+    </ol>
+  </div>
 
-render_page('Checkout', function () use ($cart, $key, $values, $errors, $formError, $issueMessages, $methods, $field) { ?>
-<div class="container-page py-10">
-  <h1 class="text-3xl font-semibold tracking-tight">Checkout</h1>
   <?php if (!$cart['lines']): ?>
-    <div class="mt-8 rounded-3xl border border-dashed border-line bg-white p-14 text-center">
-      <?php if ($formError): ?><p class="mb-4 text-sm text-red-700"><?= e($formError) ?></p><?php endif; ?>
-      <p class="text-lg font-medium">Your cart is empty</p>
-      <a href="<?= e(url('products.php')) ?>" class="btn btn-primary mt-6">Browse products</a>
-    </div>
+    <?= empty_state('shopping-cart', 'Your cart is empty', $formError ?: 'Add a few products before checking out.', url('products.php'), 'Browse products') ?>
   <?php else: ?>
-  <form method="post" action="<?= e(url('checkout.php')) ?>" class="mt-8 grid gap-10 lg:grid-cols-[1fr_400px]" data-checkout novalidate>
+  <form method="post" action="<?= e(url('checkout.php')) ?>" class="grid gap-6 lg:grid-cols-[1fr_400px]" data-checkout novalidate>
     <?= csrf_field() ?>
     <input type="hidden" name="checkout_key" value="<?= e($key) ?>">
     <div class="absolute -left-[9999px]" aria-hidden="true"><label>Website <input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
 
-    <div class="space-y-8">
+    <div class="space-y-5">
       <?php if ($formError): ?>
-        <div role="alert" class="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-          <p class="flex gap-2 font-medium"><?= icon('circle-alert', 'mt-0.5 h-4 w-4 shrink-0') ?> <?= e($formError) ?></p>
-          <?php if ($issueMessages): ?>
-            <ul class="ml-6 mt-2 list-disc space-y-0.5"><?php foreach ($issueMessages as $m): ?><li><?= e($m) ?></li><?php endforeach; ?></ul>
-          <?php endif; ?>
+        <div role="alert" class="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
+          <p class="flex gap-2 font-bold"><?= icon('circle-alert', 'h-5 w-5 shrink-0') ?> <?= e($formError) ?></p>
+          <?php if ($issueMessages): ?><ul class="ml-7 mt-2 list-disc space-y-0.5"><?php foreach ($issueMessages as $m): ?><li><?= e($m) ?></li><?php endforeach; ?></ul><?php endif; ?>
         </div>
       <?php endif; ?>
 
-      <fieldset class="rounded-3xl border border-line bg-white p-6">
-        <legend class="px-2 text-lg font-semibold">Contact details</legend>
-        <div class="mt-2 grid gap-4 sm:grid-cols-2">
-          <?= $field('name', 'Full name', ['autocomplete' => 'name', 'required' => true, 'maxlength' => 120], 'sm:col-span-2') ?>
-          <?= $field('email', 'Email', ['type' => 'email', 'autocomplete' => 'email', 'required' => true, 'maxlength' => 200], '', "We'll use this to look up your order.") ?>
-          <?= $field('phone', 'Mobile number', ['type' => 'tel', 'autocomplete' => 'tel-national', 'inputmode' => 'tel', 'required' => true, 'placeholder' => '10-digit mobile']) ?>
-          <?= $field('company', 'Company (optional)', ['autocomplete' => 'organization', 'maxlength' => 120], 'sm:col-span-2') ?>
+      <?php if (!$customer): ?>
+        <div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-brand-soft p-4 text-sm">
+          <p class="flex items-center gap-2 font-semibold text-brand-dark"><?= icon('circle-user', 'h-5 w-5') ?> Checking out as a guest. Have an account?</p>
+          <a href="<?= e(url('login.php', ['return' => url('checkout.php')])) ?>" class="btn btn-sm bg-white text-brand shadow-sm">Sign in for faster checkout</a>
         </div>
-      </fieldset>
+      <?php endif; ?>
 
-      <fieldset class="rounded-3xl border border-line bg-white p-6">
-        <legend class="px-2 text-lg font-semibold">Shipping address</legend>
-        <div class="mt-2 grid gap-4 sm:grid-cols-2">
-          <div class="sm:col-span-2">
-            <span class="field-label">Address type</span>
-            <div class="flex gap-2">
-              <?php foreach (['Home', 'Office', 'Other'] as $label): ?>
-                <label class="cursor-pointer">
-                  <input type="radio" name="label" value="<?= $label ?>" <?= $values['label'] === $label ? 'checked' : '' ?> class="peer sr-only">
-                  <span class="inline-block rounded-full border border-line px-4 py-1.5 text-sm peer-checked:border-ink peer-checked:bg-ink peer-checked:text-white peer-focus-visible:ring-2 peer-focus-visible:ring-ink/30"><?= $label ?></span>
-                </label>
-              <?php endforeach; ?>
+      <section class="card p-6">
+        <?= $step(1, 'Contact details', 'We\'ll use these to confirm and deliver your order') ?>
+        <div class="grid gap-4 sm:grid-cols-2">
+          <?= form_field('name', 'Full name', $values, $errors, ['autocomplete' => 'name', 'required' => true, 'maxlength' => 120], 'sm:col-span-2') ?>
+          <?= form_field('email', 'Email', $values, $errors, ['type' => 'email', 'autocomplete' => 'email', 'required' => true, 'maxlength' => 200]) ?>
+          <?= form_field('phone', 'Mobile number', $values, $errors, ['type' => 'tel', 'autocomplete' => 'tel-national', 'inputmode' => 'tel', 'required' => true, 'placeholder' => '10-digit mobile']) ?>
+          <?= form_field('company', 'Company (optional)', $values, $errors, ['autocomplete' => 'organization', 'maxlength' => 120], 'sm:col-span-2') ?>
+        </div>
+      </section>
+
+      <section class="card p-6">
+        <?= $step(2, 'Delivery address', 'We currently deliver across India') ?>
+        <?php if ($saved): ?>
+          <div class="grid gap-3 sm:grid-cols-2" data-address-options>
+            <?php foreach ($saved as $a): ?>
+              <label class="cursor-pointer">
+                <input type="radio" name="address_id" value="<?= (int) $a['id'] ?>" <?= $values['address_id'] === (string) $a['id'] ? 'checked' : '' ?> class="peer sr-only">
+                <span class="block h-full rounded-2xl border-2 border-line p-4 text-sm transition peer-checked:border-brand peer-checked:bg-brand-soft/60 peer-focus-visible:ring-4 peer-focus-visible:ring-brand/20">
+                  <span class="flex items-center justify-between"><span class="rounded-md bg-white px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-brand ring-1 ring-line"><?= e($a['label']) ?></span><?= $a['is_default'] ? '<span class="text-[11px] font-bold text-success">Default</span>' : '' ?></span>
+                  <span class="mt-2 block font-bold"><?= e($a['name']) ?></span>
+                  <span class="block text-ink-soft"><?= e($a['address_line']) ?>, <?= e($a['city']) ?>, <?= e($a['state']) ?> <?= e($a['pincode']) ?></span>
+                  <span class="block text-ink-soft"><?= e($a['phone']) ?></span>
+                </span>
+              </label>
+            <?php endforeach; ?>
+            <label class="cursor-pointer">
+              <input type="radio" name="address_id" value="new" <?= $values['address_id'] === 'new' ? 'checked' : '' ?> class="peer sr-only">
+              <span class="flex h-full min-h-[7rem] items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-line p-4 text-sm font-bold text-brand transition peer-checked:border-brand peer-checked:bg-brand-soft/60"><?= icon('plus', 'h-5 w-5') ?> Deliver to a new address</span>
+            </label>
+          </div>
+        <?php else: ?>
+          <input type="hidden" name="address_id" value="new">
+        <?php endif; ?>
+
+        <div class="<?= $saved ? 'mt-5 border-t border-line pt-5' : '' ?> <?= $saved && $values['address_id'] !== 'new' ? 'hidden' : '' ?>" data-new-address>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div class="sm:col-span-2">
+              <span class="field-label">Address type</span>
+              <div class="flex gap-2">
+                <?php foreach (['Home' => 'house', 'Office' => 'store', 'Other' => 'map-pin'] as $label => $ic): ?>
+                  <label class="cursor-pointer">
+                    <input type="radio" name="label" value="<?= $label ?>" <?= $values['label'] === $label ? 'checked' : '' ?> class="peer sr-only">
+                    <span class="inline-flex items-center gap-1.5 rounded-xl border-2 border-line px-4 py-2 text-sm font-semibold peer-checked:border-brand peer-checked:bg-brand-soft peer-checked:text-brand"><?= icon($ic, 'h-4 w-4') ?> <?= $label ?></span>
+                  </label>
+                <?php endforeach; ?>
+              </div>
             </div>
+            <?= form_field('address_line', 'Street address', $values, $errors, ['autocomplete' => 'street-address', 'maxlength' => 300, 'placeholder' => 'House / flat no., building, street, area'], 'sm:col-span-2') ?>
+            <?= form_field('city', 'City', $values, $errors, ['autocomplete' => 'address-level2', 'maxlength' => 80]) ?>
+            <?= form_field('pincode', 'PIN code', $values, $errors, ['autocomplete' => 'postal-code', 'inputmode' => 'numeric', 'maxlength' => 6]) ?>
+            <?= state_select('state', $values['state'], $errors['state'] ?? null) ?>
+            <div><span class="field-label">Country</span><div class="field-input bg-slate-50 text-ink-soft">India</div></div>
+            <?php if ($customer): ?>
+              <label class="flex items-center gap-2 text-sm font-medium sm:col-span-2"><input type="hidden" name="save_address" value="0"><input type="checkbox" name="save_address" value="1" <?= $values['save_address'] === '1' ? 'checked' : '' ?> class="h-4 w-4 accent-[#4f46e5]"> Save this address to my account</label>
+            <?php endif; ?>
           </div>
-          <?= $field('address_line', 'Street address', ['autocomplete' => 'street-address', 'required' => true, 'maxlength' => 300, 'placeholder' => 'House / flat no., building, street, area'], 'sm:col-span-2') ?>
-          <?= $field('city', 'City', ['autocomplete' => 'address-level2', 'required' => true, 'maxlength' => 80]) ?>
-          <?= $field('pincode', 'PIN code', ['autocomplete' => 'postal-code', 'inputmode' => 'numeric', 'maxlength' => 6, 'required' => true]) ?>
-          <div>
-            <label class="field-label" for="state">State</label>
-            <select id="state" name="state" required class="field-input" <?= isset($errors['state']) ? 'aria-invalid="true"' : '' ?>>
-              <option value="" disabled <?= $values['state'] === '' ? 'selected' : '' ?>>Select state</option>
-              <?php foreach (INDIAN_STATES as $s): ?><option value="<?= e($s) ?>" <?= $values['state'] === $s ? 'selected' : '' ?>><?= e($s) ?></option><?php endforeach; ?>
-            </select>
-            <?php if (isset($errors['state'])): ?><p class="mt-1 text-xs text-red-600"><?= e($errors['state']) ?></p><?php endif; ?>
-          </div>
-          <div><span class="field-label">Country</span><div class="field-input bg-stone-50 text-ink-soft">India</div></div>
         </div>
-      </fieldset>
+      </section>
 
-      <fieldset class="rounded-3xl border border-line bg-white p-6">
-        <legend class="px-2 text-lg font-semibold">Payment</legend>
-        <div class="mt-2 grid gap-3">
+      <section class="card p-6">
+        <?= $step(3, 'Payment method') ?>
+        <div class="grid gap-3">
           <?php foreach ($methods as $m): ?>
             <label class="cursor-pointer">
               <input type="radio" name="payment_method" value="<?= e($m['id']) ?>" <?= $values['payment_method'] === $m['id'] ? 'checked' : '' ?> class="peer sr-only">
-              <span class="flex items-start gap-3 rounded-2xl border border-line p-4 peer-checked:border-ink peer-checked:ring-1 peer-checked:ring-ink peer-focus-visible:ring-2 peer-focus-visible:ring-ink/30">
-                <span class="mt-0.5 text-accent"><?= icon('banknote', 'h-5 w-5 shrink-0') ?></span>
-                <span><span class="block font-medium"><?= e($m['label']) ?></span><span class="block text-sm text-ink-soft"><?= e($m['description']) ?></span></span>
+              <span class="flex items-center gap-4 rounded-2xl border-2 border-line p-4 transition peer-checked:border-brand peer-checked:bg-brand-soft/60">
+                <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700"><?= icon('banknote', 'h-6 w-6') ?></span>
+                <span class="flex-1"><span class="block font-bold"><?= e($m['label']) ?></span><span class="block text-sm text-ink-soft"><?= e($m['description']) ?></span></span>
+                <span class="flex h-6 w-6 items-center justify-center rounded-full border-2 border-brand bg-brand text-white"><?= icon('check', 'h-3.5 w-3.5', 3) ?></span>
               </span>
             </label>
           <?php endforeach; ?>
-          <?php if (isset($errors['payment_method'])): ?><p class="text-xs text-red-600"><?= e($errors['payment_method']) ?></p><?php endif; ?>
+          <?php if (isset($errors['payment_method'])): ?><p class="field-error"><?= e($errors['payment_method']) ?></p><?php endif; ?>
         </div>
-      </fieldset>
-
-      <fieldset class="rounded-3xl border border-line bg-white p-6">
-        <legend class="px-2 text-lg font-semibold">Order notes</legend>
-        <textarea name="notes" rows="3" maxlength="500" placeholder="Delivery instructions, preferred time, etc. (optional)" class="field-input mt-2 resize-y"><?= e($values['notes']) ?></textarea>
-      </fieldset>
+        <label for="notes" class="field-label mt-5">Order notes (optional)</label>
+        <textarea id="notes" name="notes" rows="2" maxlength="500" placeholder="Delivery instructions, preferred time, etc." class="field-input resize-y"><?= e($values['notes']) ?></textarea>
+      </section>
     </div>
 
-    <aside class="h-fit rounded-3xl border border-line bg-white p-6 lg:sticky lg:top-24">
-      <h2 class="text-lg font-semibold">Your order</h2>
-      <ul class="mt-5 space-y-4">
-        <?php foreach ($cart['lines'] as $l): $p = $l['product']; ?>
-          <li class="flex items-center gap-3">
-            <div class="w-14 shrink-0 overflow-hidden rounded-lg border border-line"><?= product_image($p['image_url'], $p['name']) ?></div>
-            <div class="min-w-0 flex-1">
-              <p class="line-clamp-1 text-sm font-medium"><?= e($p['name']) ?></p>
-              <p class="text-xs text-ink-soft">Qty <?= $l['quantity'] ?> × <?= e(format_price($p['price'], $p['currency'])) ?></p>
-            </div>
-            <p class="text-sm font-medium"><?= e(format_price($l['line_total'], $p['currency'])) ?></p>
-          </li>
-        <?php endforeach; ?>
-      </ul>
-      <dl class="mt-6 space-y-2 border-t border-line pt-5 text-sm">
-        <div class="flex justify-between"><dt class="text-ink-soft">Subtotal</dt><dd><?= e(format_price($cart['subtotal'], $cart['currency'])) ?></dd></div>
-        <div class="flex justify-between"><dt class="text-ink-soft">GST</dt><dd class="text-ink-soft">Confirmed on invoice</dd></div>
-      </dl>
-      <div class="mt-4 flex justify-between border-t border-line pt-4 font-semibold"><span>Total (excl. GST)</span><span><?= e(format_price($cart['subtotal'], $cart['currency'])) ?></span></div>
-      <button type="submit" class="btn btn-accent mt-6 w-full" data-submit-label="Placing your order…"><?= icon('lock', 'h-4 w-4') ?> <span>Place order</span></button>
-      <p class="mt-3 text-xs leading-relaxed text-ink-soft">
-        Prices are confirmed by our system when your order is placed. Applicable GST is added on your invoice.
-        <?php if (count($methods) === 1 && $methods[0]['id'] === 'cod'): ?>You pay in cash when your order is delivered.<?php endif; ?>
-      </p>
+    <aside class="space-y-4 lg:sticky lg:top-36 lg:self-start">
+      <div class="card p-6">
+        <div class="flex items-center justify-between"><h2 class="text-lg font-extrabold">Order summary</h2><a href="<?= e(url('cart.php')) ?>" class="text-sm font-bold text-brand hover:underline">Edit</a></div>
+        <ul class="mt-5 space-y-4">
+          <?php foreach ($cart['lines'] as $l): $p = $l['product']; ?>
+            <li class="flex items-center gap-3">
+              <div class="relative w-16 shrink-0">
+                <div class="overflow-hidden rounded-xl border border-line"><?= product_image($p['image_url'], $p['name'], '', false, $p['category'], 'p-1.5') ?></div>
+                <span class="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-ink px-1 text-[11px] font-bold text-white"><?= $l['quantity'] ?></span>
+              </div>
+              <p class="line-clamp-2 min-w-0 flex-1 text-sm font-semibold"><?= e($p['name']) ?></p>
+              <p class="text-sm font-bold"><?= e(format_price($l['line_total'], $p['currency'])) ?></p>
+            </li>
+          <?php endforeach; ?>
+        </ul>
+        <dl class="mt-6 space-y-2.5 border-t border-line pt-5 text-sm">
+          <div class="flex justify-between"><dt class="text-ink-soft">Subtotal</dt><dd class="font-semibold"><?= e(format_price($cart['subtotal'], $cart['currency'])) ?></dd></div>
+          <div class="flex justify-between"><dt class="text-ink-soft">GST</dt><dd class="text-ink-soft">On invoice</dd></div>
+        </dl>
+        <div class="mt-4 flex items-end justify-between border-t border-dashed border-line pt-4">
+          <span class="font-bold">Total <span class="block text-xs font-medium text-ink-soft">excl. GST · pay on delivery</span></span>
+          <span class="text-2xl font-extrabold"><?= e(format_price($cart['subtotal'], $cart['currency'])) ?></span>
+        </div>
+        <button type="submit" class="btn btn-accent btn-lg mt-6 w-full" data-submit-label="Placing your order…"><?= icon('lock', 'h-5 w-5') ?> <span>Place order</span></button>
+        <p class="mt-3 text-center text-xs leading-relaxed text-ink-soft">By placing your order you agree to pay <?= count($methods) === 1 && $methods[0]['id'] === 'cod' ? 'in cash on delivery' : 'with the method selected' ?>. Prices are confirmed by our system; applicable GST is added on your invoice.</p>
+      </div>
     </aside>
   </form>
   <?php endif; ?>

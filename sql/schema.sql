@@ -1,6 +1,7 @@
 -- Mosaic Store — storefront database schema (MySQL 5.7+ / MariaDB 10.3+).
 -- Run once in phpMyAdmin (hPanel → Databases → phpMyAdmin → select your DB → Import / SQL tab).
 -- Safe to re-run: every statement is CREATE TABLE IF NOT EXISTS.
+-- (Existing installs are upgraded automatically by includes/migrate.php — no need to re-import.)
 
 SET NAMES utf8mb4;
 
@@ -49,6 +50,7 @@ CREATE TABLE IF NOT EXISTS orders (
   website_order_id    VARCHAR(20)   NOT NULL,
   checkout_key        CHAR(32)      NOT NULL,
   access_token        CHAR(32)      NOT NULL,
+  customer_id         BIGINT UNSIGNED NULL,
   -- submitting: saved locally, ERP call in progress
   -- submitted:  accepted by the ERP (erp_order_no set)
   -- rejected:   ERP returned 400/422; nothing was created there
@@ -89,6 +91,7 @@ CREATE TABLE IF NOT EXISTS orders (
   UNIQUE KEY uq_orders_checkout_key (checkout_key),
   UNIQUE KEY uq_orders_erp_order_no (erp_order_no),
   KEY idx_orders_email (customer_email),
+  KEY idx_orders_customer (customer_id, created_at),
   KEY idx_orders_submit_state (submit_state, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -117,4 +120,53 @@ CREATE TABLE IF NOT EXISTS order_events (
   received_at       DATETIME(3)  NOT NULL,
   matched           TINYINT(1)   NOT NULL DEFAULT 0,
   UNIQUE KEY uq_order_events_body (body_sha256)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Customer accounts (profile, saved addresses, wishlist, password reset).
+CREATE TABLE IF NOT EXISTS customers (
+  id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  name            VARCHAR(120) NOT NULL,
+  email           VARCHAR(200) NOT NULL,
+  phone           VARCHAR(20)  NULL,
+  password_hash   VARCHAR(255) NOT NULL,
+  failed_logins   INT UNSIGNED NOT NULL DEFAULT 0,
+  locked_until    DATETIME(3)  NULL,
+  last_login_at   DATETIME(3)  NULL,
+  created_at      DATETIME(3)  NOT NULL,
+  updated_at      DATETIME(3)  NOT NULL,
+  UNIQUE KEY uq_customers_email (email)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS customer_addresses (
+  id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  customer_id     BIGINT UNSIGNED NOT NULL,
+  label           VARCHAR(20)  NOT NULL DEFAULT 'Home',
+  name            VARCHAR(120) NOT NULL,
+  phone           VARCHAR(20)  NOT NULL,
+  address_line    VARCHAR(300) NOT NULL,
+  city            VARCHAR(80)  NOT NULL,
+  state           VARCHAR(80)  NOT NULL,
+  pincode         VARCHAR(10)  NOT NULL,
+  is_default      TINYINT(1)   NOT NULL DEFAULT 0,
+  created_at      DATETIME(3)  NOT NULL,
+  KEY idx_addresses_customer (customer_id),
+  CONSTRAINT fk_addresses_customer FOREIGN KEY (customer_id) REFERENCES customers (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS wishlist_items (
+  customer_id     BIGINT UNSIGNED NOT NULL,
+  sku             VARCHAR(100) NOT NULL,
+  created_at      DATETIME(3)  NOT NULL,
+  PRIMARY KEY (customer_id, sku),
+  CONSTRAINT fk_wishlist_customer FOREIGN KEY (customer_id) REFERENCES customers (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS password_resets (
+  token_hash      CHAR(64)     NOT NULL PRIMARY KEY,
+  customer_id     BIGINT UNSIGNED NOT NULL,
+  expires_at      DATETIME(3)  NOT NULL,
+  used_at         DATETIME(3)  NULL,
+  created_at      DATETIME(3)  NOT NULL,
+  KEY idx_resets_customer (customer_id),
+  CONSTRAINT fk_resets_customer FOREIGN KEY (customer_id) REFERENCES customers (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

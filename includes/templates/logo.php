@@ -1,6 +1,7 @@
-<svg viewBox="0 0 24 24" class="h-7 w-7" aria-hidden="true">
-  <rect x="2" y="2" width="9" height="9" rx="2" class="fill-ink"/>
-  <rect x="13" y="2" width="9" height="9" rx="4.5" class="fill-accent"/>
-  <rect x="2" y="13" width="9" height="9" rx="4.5" class="fill-accent/40"/>
-  <rect x="13" y="13" width="9" height="9" rx="2" class="fill-ink"/>
+<svg viewBox="0 0 32 32" class="h-9 w-9 shrink-0" aria-hidden="true">
+  <rect width="32" height="32" rx="9" fill="#4f46e5"/>
+  <rect x="7" y="7" width="8" height="8" rx="2" fill="#fff"/>
+  <rect x="17" y="7" width="8" height="8" rx="4" fill="#f97316"/>
+  <rect x="7" y="17" width="8" height="8" rx="4" fill="#a5b4fc"/>
+  <rect x="17" y="17" width="8" height="8" rx="2" fill="#fff"/>
 </svg>

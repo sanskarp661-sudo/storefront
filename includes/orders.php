@@ -246,7 +246,7 @@ function resume_order(array $order): array
 
 /**
  * Validated checkout input → local order row → ERP order.
- * $input keys: checkout_key, name, email, phone, company, label, address_line, city,
+ * $input keys: checkout_key, customer_id (or null for guests), name, email, phone, company, label, address_line, city,
  * state, pincode, notes, payment_method, items (sku => qty).
  *
  * Returns ['ok' => true, 'order' => row] or
@@ -281,14 +281,15 @@ function place_order(array $input): array
         $pdo->beginTransaction();
         try {
             $inserted = db_query(
-                'INSERT IGNORE INTO orders (website_order_id, checkout_key, access_token, customer_name, customer_email, customer_phone,
+                'INSERT IGNORE INTO orders (website_order_id, checkout_key, access_token, customer_id, customer_name, customer_email, customer_phone,
                         customer_company, ship_label, ship_address_line, ship_city, ship_state, ship_pincode, ship_country, notes,
                         payment_method, subtotal_estimate, created_at, updated_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))',
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))',
                 [
                     generate_website_order_id(),
                     $input['checkout_key'],
                     bin2hex(random_bytes(16)),
+                    $input['customer_id'] ?? null,
                     $input['name'],
                     $input['email'],
                     $input['phone'],

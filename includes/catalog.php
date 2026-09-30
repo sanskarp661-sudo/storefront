@@ -52,6 +52,14 @@ function search_products(array $opts): array
         $params['brand'] = $opts['brand'];
     }
     if (!empty($opts['in_stock'])) $where[] = 'available_quantity > 0';
+    if (isset($opts['min_price']) && $opts['min_price'] !== null) {
+        $where[] = 'price >= :min_price';
+        $params['min_price'] = (float) $opts['min_price'];
+    }
+    if (isset($opts['max_price']) && $opts['max_price'] !== null) {
+        $where[] = 'price <= :max_price';
+        $params['max_price'] = (float) $opts['max_price'];
+    }
 
     $whereSql = implode(' AND ', $where);
     $order = PRODUCT_SORTS[$opts['sort'] ?? 'featured'] ?? PRODUCT_SORTS['featured'];
@@ -136,4 +144,17 @@ function get_brands(?string $category): array
         $params[] = $category;
     }
     return array_column(db_all($sql . ' ORDER BY brand', $params), 'brand');
+}
+
+/** Lowest and highest active price, for the price filter's placeholders. */
+function price_bounds(?string $category = null): array
+{
+    $sql = "SELECT MIN(price) AS lo, MAX(price) AS hi FROM products WHERE status = 'active'";
+    $params = [];
+    if ($category) {
+        $sql .= ' AND category = ?';
+        $params[] = $category;
+    }
+    $r = db_one($sql, $params);
+    return [(float) ($r['lo'] ?? 0), (float) ($r['hi'] ?? 0)];
 }
