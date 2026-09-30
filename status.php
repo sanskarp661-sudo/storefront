@@ -84,15 +84,17 @@ if ($dbOk && empty($missing)) {
     $sync = db_one("SELECT last_run_at, last_full_at, last_error, lease_until FROM sync_state WHERE name = 'catalog'");
     $active = (int) db_one("SELECT COUNT(*) AS n FROM products WHERE status = 'active'")['n'];
     $cronHint = 'Add the Cron Job from the README and wait for it to run.';
+    // The exact command for this server, from where the files really are (shown only until cron works).
+    $cronCommand = 'Use this exact Cron Job command: /usr/bin/php ' . APP_ROOT . '/cron/sync_products.php';
     if (!$sync) {
         $add('Catalogue sync', 'Cron has run', 'warn', 'The cron job has not reached the store yet',
-            'Check the Cron Job command: the /home/u…/ username and the path to cron/sync_products.php must match File Manager exactly. hPanel → Cron Jobs → View output shows any error.');
+            $cronCommand . ' (hPanel → Cron Jobs → View output shows any error.)');
     } elseif (!$sync['last_run_at'] && $sync['lease_until'] && strtotime($sync['lease_until'] . ' UTC') > time()) {
         $add('Catalogue sync', 'Cron has run', 'info', 'The first sync is running right now', 'Reload this page in a minute.');
     } elseif (!$sync['last_run_at']) {
         $add('Catalogue sync', 'Cron has run', $sync['last_error'] ? 'fail' : 'warn',
             $sync['last_error'] ? 'Last attempt failed: ' . mb_substr($sync['last_error'], 0, 200) : 'The cron job started but no sync has completed yet',
-            'hPanel → Cron Jobs → View output shows the full error.');
+            'hPanel → Cron Jobs → View output shows the full error. ' . $cronCommand);
     } else {
         $age = time() - strtotime($sync['last_run_at'] . ' UTC');
         $add('Catalogue sync', 'Cron has run', $age < 45 * 60 ? 'ok' : 'warn',
