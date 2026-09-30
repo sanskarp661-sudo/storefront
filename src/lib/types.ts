@@ -43,6 +43,7 @@ export type OrderView = {
   shippingAddress: ShippingAddress;
   items: OrderItem[];
   notes: string | null;
+  paymentMethod: string;
   subtotalEstimate: number;
   totalAmount: number | null;
   currency: string;

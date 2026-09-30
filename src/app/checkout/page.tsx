@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
+import { enabledPaymentMethods } from "@/lib/server/payments";
 import { CheckoutForm } from "./checkout-form";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = { title: "Checkout", robots: { index: false } };
 
@@ -7,7 +10,7 @@ export default function CheckoutPage() {
   return (
     <div className="container-page py-10">
       <h1 className="text-3xl font-semibold tracking-tight">Checkout</h1>
-      <CheckoutForm />
+      <CheckoutForm paymentMethods={enabledPaymentMethods()} />
     </div>
   );
 }

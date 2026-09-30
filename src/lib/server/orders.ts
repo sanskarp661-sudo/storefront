@@ -4,6 +4,7 @@ import { db } from "./db";
 import { getProductsBySkus } from "./catalog";
 import { createOrder, ErpHttpError, getOrderStatus, getProduct, type ErpOrderStatusResponse } from "./erp";
 import { upsertProducts } from "./sync";
+import { paymentMethod, type PaymentMethodId } from "../payments";
 import type { OrderItem, OrderStatus, OrderView, ShippingAddress, SubmitState } from "../types";
 
 // ---------------------------------------------------------------------------
@@ -26,6 +27,7 @@ type OrderRow = {
   shipping_address: ShippingAddress;
   items: OrderItem[];
   notes: string | null;
+  payment_method: string;
   subtotal_estimate: number;
   erp_total_amount: number | null;
   currency: string;
@@ -44,6 +46,7 @@ export type CheckoutInput = {
   shippingAddress: ShippingAddress;
   items: { sku: string; quantity: number }[];
   notes: string | null;
+  paymentMethod: PaymentMethodId;
 };
 
 export type ItemIssue = { sku: string; message: string; available?: number };
@@ -91,6 +94,7 @@ function toView(r: OrderRow): OrderView {
     shippingAddress: r.shipping_address,
     items: r.items,
     notes: r.notes,
+    paymentMethod: r.payment_method,
     subtotalEstimate: Number(r.subtotal_estimate),
     totalAmount: r.erp_total_amount === null ? null : Number(r.erp_total_amount),
     currency: r.currency,
@@ -201,6 +205,15 @@ async function reconcile(row: OrderRow): Promise<"submitted" | "absent" | "unrea
   return "submitted";
 }
 
+/**
+ * The ERP order API has no payment field, so the payment method goes at the
+ * top of the notes where the ERP team will see it, above the customer's own notes.
+ */
+function erpNotes(row: OrderRow): string | null {
+  const payment = paymentMethod(row.payment_method)?.erpNote ?? `Payment: ${row.payment_method}`;
+  return row.notes ? `${payment}\n\n${row.notes}` : payment;
+}
+
 async function submitToErp(row: OrderRow): Promise<PlaceOrderResult> {
   const sql = db();
   const ok = { ok: true as const, websiteOrderId: row.website_order_id, accessToken: row.access_token };
@@ -216,7 +229,7 @@ async function submitToErp(row: OrderRow): Promise<PlaceOrderResult> {
       },
       shipping_address: row.shipping_address,
       items: row.items.map((i) => ({ sku: i.sku, quantity: i.quantity })),
-      notes: row.notes,
+      notes: erpNotes(row),
     });
     await markSubmitted(row.id, res);
     return ok;
@@ -262,6 +275,12 @@ export async function placeOrder(input: CheckoutInput): Promise<PlaceOrderResult
   const existing = await findByCheckoutKey(input.checkoutKey);
   if (existing) return resumeExisting(existing);
 
+  const method = paymentMethod(input.paymentMethod);
+  if (!method || method.kind !== "offline") {
+    // Online methods need a gateway flow (create payment, redirect, verify) before the ERP order.
+    return { ok: false, rotateKey: false, error: "That payment method isn't available. Please choose another." };
+  }
+
   // Merge duplicate lines.
   const merged = new Map<string, number>();
   for (const i of input.items) merged.set(i.sku, (merged.get(i.sku) ?? 0) + i.quantity);
@@ -292,6 +311,7 @@ export async function placeOrder(input: CheckoutInput): Promise<PlaceOrderResult
         shipping_address: sql.json(input.shippingAddress),
         items: sql.json(lines),
         notes: input.notes,
+        payment_method: input.paymentMethod,
         subtotal_estimate: subtotal,
       } as Record<string, unknown>)}
       ON CONFLICT DO NOTHING

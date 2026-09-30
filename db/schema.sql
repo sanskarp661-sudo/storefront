@@ -88,3 +88,6 @@ CREATE TABLE IF NOT EXISTS order_events (
   received_at       timestamptz NOT NULL DEFAULT now(),
   matched           boolean NOT NULL DEFAULT false
 );
+
+-- v2: payment method chosen at checkout (see src/lib/payments.ts).
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_method text NOT NULL DEFAULT 'cod';

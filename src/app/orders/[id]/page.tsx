@@ -3,6 +3,7 @@ import Link from "next/link";
 import { AlertTriangle, CheckCircle2, Clock, FileText, Loader2, Truck } from "lucide-react";
 import { ProductImage } from "@/components/product-image";
 import { formatDate, formatPrice, productHref } from "@/lib/format";
+import { paymentMethod } from "@/lib/payments";
 import { getOrderForViewer } from "@/lib/server/orders";
 import type { OrderView } from "@/lib/types";
 import { OrderPlaced } from "./order-placed";
@@ -107,6 +108,17 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/or
               )}
               <p className="pt-2 text-xs text-ink-soft">Applicable GST will be shown on your invoice.</p>
             </dl>
+            <div className="mt-5 border-t border-line pt-5">
+              <h3 className="font-semibold">Payment</h3>
+              <p className="mt-1">{paymentMethod(order.paymentMethod)?.label ?? order.paymentMethod}</p>
+              {order.invoice && order.invoice.amount_paid >= order.invoice.total && order.invoice.total > 0 ? (
+                <p className="mt-1 text-xs text-emerald-700">Paid in full.</p>
+              ) : (
+                paymentMethod(order.paymentMethod)?.orderPageNote && (
+                  <p className="mt-1 text-xs text-ink-soft">{paymentMethod(order.paymentMethod)?.orderPageNote}</p>
+                )
+              )}
+            </div>
           </section>
           <section className="rounded-3xl border border-line bg-white p-6 text-sm">
             <h2 className="mb-3 text-base font-semibold">Shipping to</h2>
@@ -148,8 +160,8 @@ function Header({ order, placed }: { order: OrderView; placed: boolean }) {
           <div>
             <h1 className="text-2xl font-semibold sm:text-3xl">Thank you, {order.customerName.split(" ")[0]}!</h1>
             <p className="mt-1 text-white/75">
-              Your order <span className="font-mono text-white">{ref}</span> has been received. Bookmark this page to track your order any time — you can also look it up with your order number and
-              {order.customerEmail}.
+              Your order <span className="font-mono text-white">{ref}</span> has been received. Bookmark this page to track it any time, or look it up later with your order number
+              and {order.customerEmail}.
             </p>
           </div>
         </div>

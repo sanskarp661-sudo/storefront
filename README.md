@@ -23,7 +23,8 @@ for orders it doesn't know. Each request does two small DB writes and returns in
 | `DATABASE_URL` | yes | Postgres. On Vercel, use the **pooled** connection string (Neon / Supabase / Vercel Postgres). |
 | `CRON_SECRET` | yes | Protects `/api/cron/sync`. Vercel Cron sends it automatically as `Authorization: Bearer …`. |
 | `NEXT_PUBLIC_STORE_NAME` | no | Display name, default "Mosaic Store". |
-| `NEXT_PUBLIC_SUPPORT_EMAIL` | no | Shown in the footer if set. |
+| `NEXT_PUBLIC_SUPPORT_EMAIL` | no | Shown in the footer. Default `sanskar@mosaicengine.in`. |
+| `PAYMENT_METHODS` | no | Comma-separated payment methods offered at checkout; the first is the default. Default `cod`. |
 
 See `.env.example`.
 
@@ -78,6 +79,14 @@ The app runs on any Node host (`npm run build && npm start`). It has no Vercel-s
   The cron route also reconciles any order still in doubt.
 - 400/422 responses from the ERP are shown to the customer, and the order is marked `rejected`.
 
+**Payment** (`src/lib/payments.ts`)
+- Cash on Delivery is currently the only method. The customer's choice is saved on the order and shown on the order page.
+- The ERP order API has no payment field, so the method is written as the first line of the ERP order's `notes`
+  (`Payment: Cash on Delivery (COD)`), above the customer's own notes.
+- To add online payment later: add the method to `PAYMENT_METHODS` in `src/lib/payments.ts` with `kind: "online"`,
+  implement its gateway flow where `placeOrder` checks `kind`, and enable it with `PAYMENT_METHODS=cod,<id>`. Until a
+  flow exists, `placeOrder` refuses any method that isn't offline.
+
 **Tax.** Prices and totals are shown **excluding GST**, with a note that GST is confirmed on the invoice. No tax rates are
 built in. Adding a GST estimate needs rates per product or category, which the ERP API doesn't currently provide.
 
@@ -104,7 +113,6 @@ built in. Adding a GST estimate needs rates per product or category, which the E
 
 ## Not included / to decide
 
-- **Online payment.** The ERP contract has no payment step. Orders are placed as `pending`, payment is handled through
-  the ERP invoice, and the invoice status is shown on the order page.
+- **Online payment.** Not built yet; Cash on Delivery only (see *Payment* above for how to add a method).
 - **Customer emails.** The storefront doesn't send email, so customers track orders through their link or the lookup page.
 - **Shipping charges.** None are added. The ERP's `total_amount` is shown as the order total, excluding GST.

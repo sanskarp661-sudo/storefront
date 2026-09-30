@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { startTransition, useActionState, useEffect, useState } from "react";
-import { AlertCircle, Loader2, Lock } from "lucide-react";
+import { AlertCircle, Banknote, Loader2, Lock } from "lucide-react";
 import { useCart } from "@/components/cart-provider";
 import { ProductImage } from "@/components/product-image";
 import { formatPrice } from "@/lib/format";
 import { INDIAN_STATES } from "@/lib/india";
+import type { PaymentMethod } from "@/lib/payments";
 import { placeOrderAction, type CheckoutState } from "./actions";
 
 const KEY_STORAGE = "storefront.checkoutKey";
@@ -28,7 +29,7 @@ function currentKey() {
   }
 }
 
-export function CheckoutForm() {
+export function CheckoutForm({ paymentMethods }: { paymentMethods: PaymentMethod[] }) {
   const { lines, ready, subtotal, setQuantity, remove } = useCart();
   const [checkoutKey, setCheckoutKey] = useState("");
   const [state, formAction, pending] = useActionState<CheckoutState, FormData>(async (prev, formData) => {
@@ -148,6 +149,31 @@ export function CheckoutForm() {
         </fieldset>
 
         <fieldset className="rounded-3xl border border-line bg-white p-6">
+          <legend className="px-2 text-lg font-semibold">Payment</legend>
+          <div className="mt-2 grid gap-3">
+            {paymentMethods.map((m, i) => (
+              <label key={m.id} className="cursor-pointer">
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value={m.id}
+                  defaultChecked={v.paymentMethod ? v.paymentMethod === m.id : i === 0}
+                  className="peer sr-only"
+                />
+                <span className="flex items-start gap-3 rounded-2xl border border-line p-4 peer-checked:border-ink peer-checked:ring-1 peer-checked:ring-ink peer-focus-visible:ring-2 peer-focus-visible:ring-ink/30">
+                  <Banknote className="mt-0.5 h-5 w-5 shrink-0 text-accent" />
+                  <span>
+                    <span className="block font-medium">{m.label}</span>
+                    <span className="block text-sm text-ink-soft">{m.description}</span>
+                  </span>
+                </span>
+              </label>
+            ))}
+            {fe.paymentMethod && <p className="text-xs text-red-600">{fe.paymentMethod}</p>}
+          </div>
+        </fieldset>
+
+        <fieldset className="rounded-3xl border border-line bg-white p-6">
           <legend className="px-2 text-lg font-semibold">Order notes</legend>
           <textarea
             name="notes"
@@ -195,8 +221,8 @@ export function CheckoutForm() {
           {pending ? "Placing your order…" : "Place order"}
         </button>
         <p className="mt-3 text-xs leading-relaxed text-ink-soft">
-          Prices are confirmed by our system when your order is placed. Applicable GST will be added on your invoice, and our
-          team will be in touch about payment and delivery.
+          Prices are confirmed by our system when your order is placed. Applicable GST is added on your invoice.
+          {paymentMethods.length === 1 && paymentMethods[0].id === "cod" && " You pay in cash when your order is delivered."}
         </p>
       </aside>
     </form>

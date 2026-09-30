@@ -2,8 +2,10 @@
 
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import type { PaymentMethodId } from "@/lib/payments";
 import { INDIAN_STATES, normalizeIndianPhone } from "@/lib/india";
 import { placeOrder, type ItemIssue } from "@/lib/server/orders";
+import { enabledPaymentMethods } from "@/lib/server/payments";
 
 export type CheckoutState = {
   error?: string;
@@ -35,6 +37,10 @@ const schema = z.object({
   state: z.enum(INDIAN_STATES, "Please choose your state"),
   pincode: z.string().trim().regex(/^[1-9][0-9]{5}$/, "Please enter a valid 6-digit PIN code"),
   notes: optional(500),
+  paymentMethod: z
+    .string()
+    .refine((id) => enabledPaymentMethods().some((m) => m.id === id), "Please choose a payment method")
+    .transform((id) => id as PaymentMethodId),
   items: z
     .string()
     .transform((s, ctx) => {
@@ -94,6 +100,7 @@ export async function placeOrderAction(_prev: CheckoutState, formData: FormData)
       },
       items: d.items,
       notes: d.notes,
+      paymentMethod: d.paymentMethod,
     });
   } catch (err) {
     console.error("[checkout] placeOrder failed", err);
