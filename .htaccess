@@ -1,0 +1,29 @@
+# Mosaic Store — Apache / LiteSpeed rules (Hostinger).
+
+Options -Indexes
+DirectoryIndex index.php
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  # Force HTTPS.
+  RewriteCond %{HTTPS} !=on
+  RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+  RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+  # Nothing outside the public pages may be requested directly.
+  RewriteRule ^(includes|cron|sql|tests|tools)(/|$) - [F,L]
+  RewriteRule (^|/)\. - [F,L]
+  RewriteRule ^(config\.php|config\.sample\.php)$ - [F,L]
+</IfModule>
+
+# Belt and braces if mod_rewrite is unavailable.
+<FilesMatch "(^\.|^config(\.sample)?\.php$|\.(md|sql|json|lock|log|zip|sh|mjs)$)">
+  Require all denied
+</FilesMatch>
+
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType text/css "access plus 1 year"
+  ExpiresByType application/javascript "access plus 1 year"
+  ExpiresByType image/x-icon "access plus 1 month"
+</IfModule>

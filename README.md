@@ -1,118 +1,149 @@
-# Storefront
+# Mosaic Store — storefront
 
-A customer-facing e-commerce site (Next.js 16 App Router + TypeScript + Tailwind) for the Mosaic ERP at
-`https://erp.mosaicengine.in`. Customers can browse the catalog synced from the ERP, check out, and track their orders.
-Orders are pushed to the ERP, and status comes back through signed webhooks, with polling as a fallback.
+A customer-facing shop for the Mosaic ERP, written in plain PHP + MySQL so it runs on Hostinger shared hosting.
+It has no framework, no Composer and no build step on the server.
 
-## Webhook URL for the ERP
+- **Catalogue** is copied from the ERP into the store's own MySQL database by a cron job, and pages are served from that copy.
+- **Cart** is held in the PHP session. **Checkout** sends the order to the ERP from PHP (cURL). **Cash on Delivery** is the only payment method for now.
+- **Order status** stays current through the ERP's signed webhook. If a webhook is missed, the store polls `order_status.php`.
+- The ERP API key is used only by PHP on the server. It never appears in any page or JavaScript.
+
+Requirements: PHP 8.1+ with `pdo_mysql`, `curl` and `mbstring` (all standard on Hostinger), and MySQL 5.7+ / MariaDB 10.3+.
+
+---
+
+## Setup on Hostinger (hPanel)
+
+### 1. Upload the files
+
+Put the contents of this folder into the site's web root, `domains/store.mosaicengine.in/public_html/`.
+You can use the Git auto-deploy or upload `storefront-upload.zip` in **File Manager** and extract it there.
+`index.php` must sit directly inside `public_html`.
+
+If an earlier version is already in `public_html` (for example the old Next.js files), delete it first.
+
+### 2. Create the database
+
+1. hPanel → **Databases → MySQL Databases**: create a database and a user. Note the full names Hostinger gives them
+   (like `u123456789_store`) and the password.
+2. hPanel → **Databases → phpMyAdmin** → open that database → **Import** → choose `sql/schema.sql` → **Go**.
+   You can also paste the file into the **SQL** tab. It creates 7 tables and is safe to run again.
+
+### 3. Create `config.php`
+
+In File Manager, copy `config.sample.php` to **`config.php`** (same folder) and fill in:
+
+```php
+define('DB_HOST', 'localhost');
+define('DB_NAME', 'u123456789_store');        // from step 2
+define('DB_USER', 'u123456789_store');        // from step 2
+define('DB_PASS', '...');                     // from step 2
+define('ERP_API_KEY', '...');                 // the ERP API key
+define('ERP_API_BASE', 'https://erp.mosaicengine.in/api/v1');
+define('ERP_WEBHOOK_SECRET', '...');          // the same value as ERP_API_KEY
+define('STORE_NAME', 'Mosaic Store');
+define('SUPPORT_EMAIL', 'sanskar@mosaicengine.in');
+define('SITE_URL', 'https://store.mosaicengine.in');
+define('PAYMENT_METHODS', 'cod');
+define('DEBUG', false);
+```
+
+`config.php` is in `.gitignore`, so it is never committed, and `.htaccess` blocks it from being downloaded.
+Hostinger's Git deploy pulls into the folder and normally leaves untracked files like this in place.
+Keep a copy of your values somewhere safe anyway.
+
+### 4. Schedule the sync (Cron Jobs)
+
+hPanel → **Advanced → Cron Jobs** → **Custom**:
+
+| Field | Value |
+| --- | --- |
+| Command | `/usr/bin/php /home/u123456789/domains/store.mosaicengine.in/public_html/cron/sync_products.php` |
+| Schedule | every 15 minutes (`*/15 * * * *`) |
+
+Replace `u123456789` with your Hostinger username. It's the first part of the path File Manager shows, and the prefix on your database name.
+
+Each run:
+- fetches products changed since the last run (`products.php?since=…`)
+- does a full re-sync every 6 hours (this also hides products removed in the ERP)
+- refreshes categories
+- settles any order whose submission to the ERP timed out
+
+Runs never overlap. The first run loads the whole catalogue. Until it has run, the shop shows "Our catalogue is being updated".
+To force a full re-sync, add ` full` to the end of the command.
+
+### 5. Point the ERP webhook at the store
+
+Set the ERP's `WEBSITE_WEBHOOK_URL` to:
 
 ```
-WEBSITE_WEBHOOK_URL = https://<your-storefront-domain>/api/webhooks/erp
+https://store.mosaicengine.in/webhooks/erp.php
 ```
 
-The endpoint recomputes `hash_hmac('sha256', rawBody, ERP_API_KEY)` and compares it with `X-Webhook-Signature` in
-constant time. It returns `401` when the signature is wrong, `400` for malformed JSON, and `200` otherwise, including
-for orders it doesn't know. Each request does two small DB writes and returns in a few milliseconds.
+### 6. Check it
 
-## Environment variables
+- Open https://store.mosaicengine.in. After the first cron run, products appear.
+- Place a test order. It should show up in the ERP as a pending sales order, with `Payment: Cash on Delivery (COD)` at the top of its notes.
+- Change the order's status in the ERP. The order page on the store should show the new status straight away.
 
-| Variable | Required | Notes |
-| --- | --- | --- |
-| `ERP_API_KEY` | yes | Server-only. Sent as `X-API-Key` and used as the webhook HMAC secret. |
-| `ERP_API_BASE_URL` | no | Defaults to `https://erp.mosaicengine.in/api/v1/`. |
-| `DATABASE_URL` | yes | Postgres. On Vercel, use the **pooled** connection string (Neon / Supabase / Vercel Postgres). |
-| `CRON_SECRET` | yes | Protects `/api/cron/sync`. Vercel Cron sends it automatically as `Authorization: Bearer …`. |
-| `NEXT_PUBLIC_STORE_NAME` | no | Display name, default "Mosaic Store". |
-| `NEXT_PUBLIC_SUPPORT_EMAIL` | no | Shown in the footer. Default `sanskar@mosaicengine.in`. |
-| `PAYMENT_METHODS` | no | Comma-separated payment methods offered at checkout; the first is the default. Default `cod`. |
+SSL: `.htaccess` redirects HTTP to HTTPS, so the subdomain needs its (free) SSL certificate active in hPanel → **Security → SSL**.
 
-See `.env.example`.
+---
 
-## Setup
+## Files
 
-```bash
-npm install
-cp .env.example .env.local   # fill in values
-npm run db:migrate           # creates tables (idempotent, safe to re-run)
-npm run dev
-```
-
-The catalog fills itself: when the database is empty, the first page view runs a full sync. To trigger a sync by hand:
-
-```bash
-curl -H "Authorization: Bearer $CRON_SECRET" "https://<domain>/api/cron/sync?mode=full"
-```
-
-Checks: `npm run lint`, `npm run typecheck`, `npm test` (webhook signature tests), `npm run build`.
-
-## Deploying (Vercel)
-
-1. Import the repo in Vercel. Add a Postgres database (for example Neon from the Vercel Marketplace), which sets `DATABASE_URL`.
-2. Set `ERP_API_KEY` and `CRON_SECRET` (plus the optional variables) for Production.
-3. Run `npm run db:migrate` once against the production `DATABASE_URL`.
-4. Deploy, then set the ERP's `WEBSITE_WEBHOOK_URL` to `https://<domain>/api/webhooks/erp`.
-
-The app runs on any Node host (`npm run build && npm start`). It has no Vercel-specific code apart from `vercel.json`'s cron entry.
+| Path | What it is |
+| --- | --- |
+| `index.php`, `products.php`, `product.php` | Home, catalogue (search, category/brand filters, in-stock, sort, pages), product page |
+| `cart.php`, `checkout.php` | Session cart; checkout form that places the order |
+| `order.php`, `track.php` | Order confirmation / status page (private link); "Track my order" lookup |
+| `webhooks/erp.php` | ERP webhook receiver |
+| `cron/sync_products.php` | Cron job (command line only; refuses web requests) |
+| `includes/` | PHP code and templates (not reachable from the web) |
+| `sql/schema.sql` | Database schema |
+| `assets/` | Compiled CSS and a small JS file |
+| `tests/run.php` | `php tests/run.php`: unit tests for signature checking and formatting |
+| `tools/tailwind/` | Only needed to rebuild the CSS after changing classes in templates: `cd tools/tailwind && npm install && npm run build` |
 
 ## How it works
 
-**Catalog: synced into Postgres and served from there** (`src/lib/server/sync.ts`)
-- *Incremental* sync calls `products.php?since=<max updated_at seen>`. The cursor is the ERP's own timestamp, so the two
-  servers' clocks never need to agree. *Full* sync walks every page and marks products the ERP no longer returns as
-  `inactive`, which catches deletions and deactivations. It runs every 6 hours, or on `?mode=full`.
-- **Freshness does not depend on the cron schedule.** A page view on data older than 5 minutes serves the cached data
-  immediately and starts a background incremental sync (`after()`). A lease row stops overlapping syncs across serverless
-  instances. The Vercel cron (`vercel.json`, daily, which the Hobby plan allows) is only a safety net. On Pro you can
-  schedule it more often, or have any external scheduler call `/api/cron/sync`.
-- Search (name / SKU / brand / category), category and brand filters, in-stock toggle, sorting and pagination all run in SQL.
-- Stock displayed is `available_quantity`, as specified.
+**Catalogue.** The cron job copies the ERP catalogue into the `products` and `categories` tables.
+The incremental cursor is the newest `updated_at` the ERP has returned, so it never depends on the server's clock.
+Stock shown is the ERP's `available_quantity`. Prices exclude GST, and the pages say that GST is confirmed on the invoice.
 
-**Cart & checkout** (`src/components/cart-provider.tsx`, `src/app/checkout/`, `src/lib/server/orders.ts`)
-- The cart is stored client-side in `localStorage`. The cart page refreshes prices and stock from the DB, and prices in
-  the cart are display-only: the order payload sends SKU and quantity, and the ERP resolves prices.
-- On submit, a Server Action validates the form with zod (Indian mobile, 6-digit PIN, state list) and re-checks each SKU
-  live against `products.php?sku=`. If stock ran out, the customer sees it and the cart is corrected. It then creates a
-  local order row with a generated `website_order_id` (`WEB-XXXXXXXXXX`) and POSTs to `orders.php`.
-- **No duplicate orders.** Every checkout attempt carries an idempotency key, so double-clicks and retries resolve to the
-  same order. If the ERP call fails ambiguously (timeout, 5xx), the storefront looks the order up with
-  `order_status.php?website_order_id=` before telling the customer anything, so a retry can't create a second ERP order.
-  The cron route also reconciles any order still in doubt.
-- 400/422 responses from the ERP are shown to the customer, and the order is marked `rejected`.
+**Checkout.**
+- The checkout form is protected by a CSRF token and validates name, email, Indian mobile, 6-digit PIN and state.
+  Full state names are sent to the ERP.
+- Before ordering, PHP re-checks every cart line live against `products.php?sku=`. If stock has run out, the cart is
+  corrected and the customer is told.
+- The order is saved locally, with its items in `order_items`, and then POSTed to `orders.php` with a generated
+  `website_order_id` (`WEB-XXXXXXXXXX`). Prices are not sent; the ERP sets them.
 
-**Payment** (`src/lib/payments.ts`)
-- Cash on Delivery is currently the only method. The customer's choice is saved on the order and shown on the order page.
-- The ERP order API has no payment field, so the method is written as the first line of the ERP order's `notes`
-  (`Payment: Cash on Delivery (COD)`), above the customer's own notes.
-- To add online payment later: add the method to `PAYMENT_METHODS` in `src/lib/payments.ts` with `kind: "online"`,
-  implement its gateway flow where `placeOrder` checks `kind`, and enable it with `PAYMENT_METHODS=cod,<id>`. Until a
-  flow exists, `placeOrder` refuses any method that isn't offline.
+**No duplicate orders.** Each checkout attempt has an idempotency key, so a double click or a retry resolves to the same order.
+If the ERP call times out or returns a 5xx, the store first looks the order up with
+`order_status.php?website_order_id=…` before deciding anything. The cron job also settles any order still in doubt.
+ERP 400/422 errors are shown to the customer.
 
-**Tax.** Prices and totals are shown **excluding GST**, with a note that GST is confirmed on the invoice. No tax rates are
-built in. Adding a GST estimate needs rates per product or category, which the ERP API doesn't currently provide.
+**Payment.** Cash on Delivery. The ERP order API has no payment field, so the method goes in the first line of the
+order notes. To add online payment later, see the comment at the top of `includes/payments.php`.
 
-**Order confirmation & tracking** (`src/app/orders/[id]`, `src/app/track`)
-- Each order has a private link, `/orders/<website_order_id>?key=<random token>`. The order ID alone doesn't open the page.
-- *Track my order* needs the order number (`SO-…` or `WEB-…`) **and** the checkout email. Orders placed on a device are
-  also listed there.
-- Status comes from the local DB, which webhooks keep up to date. If the record hasn't been updated recently (2 minutes
-  for active orders, 1 hour for completed or cancelled ones), viewing it triggers a quick poll of `order_status.php`,
-  which also pulls in the delivery note and invoice. If the ERP is slow, the page shows the cached record.
+**Order status.**
+- Webhooks are verified with `hash_hmac('sha256', raw body, ERP_WEBHOOK_SECRET)` and `hash_equals()`. They are logged
+  in `order_events`, where repeated deliveries are ignored, and update the matching order in a few milliseconds.
+- A status is applied only if its `sent_at` is not older than the one already stored, so late deliveries can't move an
+  order backwards.
+- When someone views an order whose data is more than 2 minutes old (1 hour once it's completed or cancelled), the store
+  also asks `order_status.php`. This fills in the delivery note and invoice, and covers any missed webhook.
 
-**Webhooks** (`src/app/api/webhooks/erp/route.ts`)
-- Each delivery is logged in `order_events`, and a hash of the body dedupes redeliveries.
-- Out-of-order deliveries are handled: a status is applied only if its `sent_at` is not older than the last status recorded.
-- `order.delivered` records `delivered_at` and the delivery note number, and the timeline shows the order as delivered.
+**Access to orders.**
+- Each order has a private link: `order.php?id=WEB-…&key=<random>`.
+- "Track my order" needs the order number and the checkout email, and is limited to 10 lookups per 10 minutes per browser session.
+- Orders placed in the same browser session are listed on the track page.
 
-**Security**
-- The ERP API key is read only in `src/lib/server/env.ts`. Everything under `src/lib/server/` imports `server-only`, so
-  importing it from a Client Component fails the build. ERP calls are made only from Server Components, Server Actions
-  and Route Handlers.
-- `Referrer-Policy: same-origin` keeps order-link tokens from leaking through the `Referer` header.
-- The checkout form has a honeypot field. There is no rate limiting yet; add it at the edge (for example the Vercel
-  Firewall) if bots become a problem.
-
-## Not included / to decide
-
-- **Online payment.** Not built yet; Cash on Delivery only (see *Payment* above for how to add a method).
-- **Customer emails.** The storefront doesn't send email, so customers track orders through their link or the lookup page.
-- **Shipping charges.** None are added. The ERP's `total_amount` is shown as the order total, excluding GST.
+**Security.**
+- `config.php`, `includes/`, `cron/`, `sql/`, `tests/`, `tools/`, `.git` and dotfiles return 403 (`.htaccess`).
+- PDO prepared statements are used everywhere, and all output is HTML-escaped.
+- The session cookie is `HttpOnly`, `SameSite=Lax` and `Secure` on HTTPS.
+- `Referrer-Policy: same-origin` keeps order-link keys out of Referer headers.
+- There is a honeypot field on checkout.
+- With `DEBUG` off, errors go to the PHP error log, and visitors see a generic message.
