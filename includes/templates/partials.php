@@ -122,7 +122,13 @@ function product_card(array $p, bool $eager = false): string
       <div class="absolute left-3 top-3 z-10"><?= stock_badge($p['available'], true) ?></div>
       <?= wishlist_button($p['sku'], 'absolute right-3 top-3 z-10') ?>
       <a href="<?= e(product_url($p['sku'])) ?>" class="block overflow-hidden">
-        <?= product_image($p['image_url'], $p['name'], 'transition-transform duration-500 group-hover:scale-105' . ($out ? ' opacity-60 grayscale' : ''), $eager, $p['category']) ?>
+        <div class="relative">
+          <?= product_image($p['image_url'], $p['name'], 'transition duration-500 group-hover:scale-105' . (count($p['images'] ?? []) > 1 ? ' group-hover:opacity-0' : '') . ($out ? ' opacity-60 grayscale' : ''), $eager, $p['category']) ?>
+          <?php if (count($p['images'] ?? []) > 1): /* second photo on hover, like most fashion/electronics stores */ ?>
+            <img src="<?= e($p['images'][1]) ?>" alt="" loading="lazy" decoding="async" class="absolute inset-0 h-full w-full bg-white object-contain p-5 opacity-0 transition duration-500 group-hover:scale-105 group-hover:opacity-100<?= $out ? ' grayscale' : '' ?>">
+            <span class="absolute bottom-2 right-2 rounded-full bg-ink/70 px-2 py-0.5 text-[10px] font-bold text-white"><?= count($p['images']) ?> photos</span>
+          <?php endif; ?>
+        </div>
       </a>
       <div class="flex flex-1 flex-col gap-1.5 border-t border-line/70 p-4">
         <p class="text-[11px] font-bold uppercase tracking-wider text-brand"><?= e($p['brand'] ?: ($p['category'] ?: STORE_NAME)) ?></p>
@@ -208,4 +214,31 @@ function empty_state(string $iconName, string $title, string $text, string $ctaH
         . '<h2 class="mt-5 text-xl font-extrabold">' . e($title) . '</h2>'
         . '<p class="mt-1 max-w-sm text-sm text-ink-soft">' . e($text) . '</p>'
         . '<a href="' . e($ctaHref) . '" class="btn btn-primary mt-6">' . e($ctaLabel) . '</a></div>';
+}
+
+/**
+ * Product photo gallery: a swipeable strip of full-size images (CSS scroll-snap,
+ * works without JS) with prev/next arrows and a counter; thumbnails are rendered
+ * by product.php below it. Each image zooms on hover.
+ */
+function product_gallery(array $p): string
+{
+    $images = $p['images'] ?? [];
+    if (count($images) <= 1) {
+        return '<div class="zoom-frame overflow-hidden rounded-2xl" data-zoom>' . product_image($images[0] ?? $p['image_url'], $p['name'], 'rounded-2xl', true, $p['category'], 'p-8') . '</div>';
+    }
+    $n = count($images);
+    $html = '<div class="relative" data-gallery>'
+        . '<div class="gallery-track flex snap-x snap-mandatory overflow-x-auto rounded-2xl outline-none focus-visible:ring-4 focus-visible:ring-brand/25" data-gallery-track tabindex="0" aria-label="Product photos">';
+    foreach ($images as $i => $src) {
+        $html .= '<div id="img-' . ($i + 1) . '" class="zoom-frame w-full shrink-0 snap-center overflow-hidden" data-zoom data-slide="' . $i . '">'
+            . '<div class="relative aspect-square bg-white"><img src="' . e($src) . '" alt="' . e($p['name']) . ' — photo ' . ($i + 1) . ' of ' . $n . '" '
+            . 'loading="' . ($i === 0 ? 'eager' : 'lazy') . '" decoding="async" class="absolute inset-0 h-full w-full object-contain p-8"></div></div>';
+    }
+    $html .= '</div>'
+        . '<button type="button" data-gallery-prev class="absolute left-3 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-ink shadow-md ring-1 ring-black/5 transition hover:scale-110 sm:flex" aria-label="Previous photo">' . icon('chevron-left', 'h-5 w-5') . '</button>'
+        . '<button type="button" data-gallery-next class="absolute right-3 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-ink shadow-md ring-1 ring-black/5 transition hover:scale-110 sm:flex" aria-label="Next photo">' . icon('chevron-right', 'h-5 w-5') . '</button>'
+        . '<span class="absolute bottom-3 left-1/2 z-10 -translate-x-1/2 rounded-full bg-ink/75 px-3 py-1 text-xs font-bold text-white" data-gallery-count>1 / ' . $n . '</span>'
+        . '</div>';
+    return $html;
 }

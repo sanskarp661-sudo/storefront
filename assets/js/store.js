@@ -101,6 +101,42 @@
       });
     });
 
+    // Product gallery: arrows, thumbnails, counter, keyboard; swipe is native scroll-snap.
+    document.querySelectorAll("[data-gallery]").forEach(function (gallery) {
+      var track = gallery.querySelector("[data-gallery-track]");
+      var slides = track.querySelectorAll("[data-slide]");
+      var count = gallery.querySelector("[data-gallery-count]");
+      var thumbs = document.querySelectorAll("[data-gallery-thumbs] [data-thumb]");
+      var current = 0;
+      function go(i) {
+        i = (i + slides.length) % slides.length;
+        track.scrollTo({ left: slides[i].offsetLeft, behavior: "smooth" });
+      }
+      function mark(i) {
+        current = i;
+        if (count) count.textContent = i + 1 + " / " + slides.length;
+        thumbs.forEach(function (t) {
+          var on = Number(t.dataset.thumb) === i;
+          t.classList.toggle("border-brand", on); t.classList.toggle("border-line", !on);
+          if (on) t.setAttribute("aria-current", "true"); else t.removeAttribute("aria-current");
+        });
+      }
+      var raf;
+      track.addEventListener("scroll", function () {
+        cancelAnimationFrame(raf);
+        raf = requestAnimationFrame(function () { mark(Math.round(track.scrollLeft / track.clientWidth)); });
+      });
+      gallery.querySelector("[data-gallery-prev]").addEventListener("click", function () { go(current - 1); });
+      gallery.querySelector("[data-gallery-next]").addEventListener("click", function () { go(current + 1); });
+      track.addEventListener("keydown", function (e) {
+        if (e.key === "ArrowLeft") { e.preventDefault(); go(current - 1); }
+        if (e.key === "ArrowRight") { e.preventDefault(); go(current + 1); }
+      });
+      thumbs.forEach(function (t) {
+        t.addEventListener("click", function (e) { e.preventDefault(); go(Number(t.dataset.thumb)); });
+      });
+    });
+
     // Image zoom follows the pointer.
     document.querySelectorAll("[data-zoom]").forEach(function (frame) {
       frame.addEventListener("mousemove", function (e) {

@@ -50,9 +50,19 @@ render_page($product['name'], function () use ($product, $related, $recent, $inC
       <div class="card relative overflow-hidden p-3">
         <div class="absolute left-6 top-6 z-10"><?= stock_badge($p['available'], true) ?></div>
         <?= wishlist_button($p['sku'], 'absolute right-6 top-6 z-10') ?>
-        <div class="zoom-frame overflow-hidden rounded-2xl" data-zoom><?= product_image($p['image_url'], $p['name'], 'rounded-2xl', true, $p['category'], 'p-8') ?></div>
+        <?= product_gallery($p) ?>
       </div>
-      <?php if ($p['image_url']): ?><p class="mt-3 hidden text-center text-xs text-muted lg:block">Hover over the image to zoom</p><?php endif; ?>
+      <?php if (count($p['images']) > 1): ?>
+        <div class="mt-3 grid grid-cols-5 gap-2 sm:grid-cols-6" data-gallery-thumbs>
+          <?php foreach ($p['images'] as $i => $src): ?>
+            <a href="#img-<?= $i + 1 ?>" data-thumb="<?= $i ?>" aria-label="Show image <?= $i + 1 ?> of <?= count($p['images']) ?>" <?= $i === 0 ? 'aria-current="true"' : '' ?>
+               class="block overflow-hidden rounded-xl border-2 bg-white transition <?= $i === 0 ? 'border-brand' : 'border-line hover:border-brand/50' ?>">
+              <img src="<?= e($src) ?>" alt="" loading="lazy" decoding="async" class="aspect-square w-full object-contain p-1.5">
+            </a>
+          <?php endforeach; ?>
+        </div>
+      <?php endif; ?>
+      <?php if ($p['image_url']): ?><p class="mt-3 hidden text-center text-xs text-muted lg:block">Hover over the image to zoom<?= count($p['images']) > 1 ? ' · use the arrows or thumbnails to see all ' . count($p['images']) . ' photos' : '' ?></p><?php endif; ?>
     </div>
 
     <div class="space-y-5">

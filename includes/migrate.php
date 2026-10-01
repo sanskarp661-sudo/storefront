@@ -8,7 +8,7 @@ declare(strict_types=1);
  * sql/schema.sql always contains the full, current schema for fresh installs.
  */
 
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 function ensure_schema(): void
 {
@@ -67,6 +67,17 @@ function ensure_schema(): void
     );
     if (!$hasColumn) {
         $pdo->exec('ALTER TABLE orders ADD COLUMN customer_id BIGINT UNSIGNED NULL AFTER access_token, ADD KEY idx_orders_customer (customer_id, created_at)');
+    }
+
+    // v3: all product images (the ERP's gallery), stored as a JSON list.
+    $hasImages = db_one(
+        "SELECT 1 AS x FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'products' AND COLUMN_NAME = 'images'"
+    );
+    if (!$hasImages) {
+        $pdo->exec('ALTER TABLE products ADD COLUMN images TEXT NULL AFTER image_url');
+        // Gallery photos added in the ERP may not change a product's updated_at,
+        // so make the next cron run a full sync to pick them all up.
+        $pdo->exec("UPDATE sync_state SET cursor_value = NULL WHERE name = 'catalog'");
     }
 
     @file_put_contents($marker, (string) time());

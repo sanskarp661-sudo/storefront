@@ -17,6 +17,16 @@ const SYNC_LEASE_SECONDS = 600;
 const SYNC_PER_PAGE = 200;
 const SYNC_MAX_PAGES = 1000;
 
+/** Main image first, then the ERP's gallery images; http(s) only, de-duplicated, at most 12. */
+function product_image_list(array $p): array
+{
+    $urls = [];
+    foreach (array_merge([$p['image_url'] ?? null], is_array($p['images'] ?? null) ? $p['images'] : []) as $u) {
+        if (is_string($u) && preg_match('#^https?://#i', $u) && !in_array($u, $urls, true)) $urls[] = $u;
+    }
+    return array_slice($urls, 0, 12);
+}
+
 /** Upserts ERP product records into the local products table. */
 function upsert_products(array $products, ?string $syncedAt = null): void
 {
@@ -27,7 +37,8 @@ function upsert_products(array $products, ?string $syncedAt = null): void
         $values = [];
         $params = [];
         foreach ($chunk as $p) {
-            $values[] = '(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)';
+            $values[] = '(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)';
+            $images = product_image_list($p);
             array_push(
                 $params,
                 (int) $p['id'],
@@ -36,7 +47,8 @@ function upsert_products(array $products, ?string $syncedAt = null): void
                 $p['description'] ?? null,
                 $p['category'] ?? null,
                 $p['brand'] ?? null,
-                $p['image_url'] ?? null,
+                $images[0] ?? null,
+                $images ? json_encode($images, JSON_UNESCAPED_SLASHES) : null,
                 $p['unit'] ?? null,
                 (float) ($p['price'] ?? 0),
                 ($p['currency'] ?? '') ?: 'INR',
@@ -49,12 +61,12 @@ function upsert_products(array $products, ?string $syncedAt = null): void
             );
         }
         db_query(
-            'INSERT INTO products (erp_id, sku, name, description, category, brand, image_url, unit, price, currency,
+            'INSERT INTO products (erp_id, sku, name, description, category, brand, image_url, images, unit, price, currency,
                                    quantity_on_hand, available_quantity, status, erp_updated_at, synced_at, search_text)
              VALUES ' . implode(',', $values) . '
              ON DUPLICATE KEY UPDATE
                sku = VALUES(sku), name = VALUES(name), description = VALUES(description), category = VALUES(category),
-               brand = VALUES(brand), image_url = VALUES(image_url), unit = VALUES(unit), price = VALUES(price),
+               brand = VALUES(brand), image_url = VALUES(image_url), images = VALUES(images), unit = VALUES(unit), price = VALUES(price),
                currency = VALUES(currency), quantity_on_hand = VALUES(quantity_on_hand),
                available_quantity = VALUES(available_quantity), status = VALUES(status),
                erp_updated_at = VALUES(erp_updated_at), synced_at = VALUES(synced_at), search_text = VALUES(search_text)',

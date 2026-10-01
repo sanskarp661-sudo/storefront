@@ -1,7 +1,15 @@
 <?php
 declare(strict_types=1);
 
-const PRODUCT_COLUMNS = 'sku, name, description, category, brand, image_url, unit, price, currency, available_quantity';
+const PRODUCT_COLUMNS = 'sku, name, description, category, brand, image_url, images, unit, price, currency, available_quantity';
+
+/** All image URLs for a product row: the stored gallery list, else just the main image. */
+function product_images_from_row(array $r): array
+{
+    $list = isset($r['images']) && $r['images'] !== null ? json_decode((string) $r['images'], true) : null;
+    if (!is_array($list) || !$list) $list = $r['image_url'] ? [$r['image_url']] : [];
+    return array_values(array_filter($list, fn($u) => is_string($u) && preg_match('#^https?://#i', $u)));
+}
 
 function product_from_row(array $r): array
 {
@@ -12,6 +20,7 @@ function product_from_row(array $r): array
         'category' => $r['category'],
         'brand' => $r['brand'],
         'image_url' => $r['image_url'],
+        'images' => product_images_from_row($r),
         'unit' => $r['unit'],
         'price' => (float) $r['price'],
         'currency' => $r['currency'],

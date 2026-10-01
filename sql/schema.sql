@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS products (
   category            VARCHAR(191)  NULL,
   brand               VARCHAR(191)  NULL,
   image_url           VARCHAR(1024) NULL,
+  images              TEXT          NULL,  -- JSON list of all image URLs (main image first)
   unit                VARCHAR(50)   NULL,
   price               DECIMAL(12,2) NOT NULL DEFAULT 0,
   currency            CHAR(3)       NOT NULL DEFAULT 'INR',
