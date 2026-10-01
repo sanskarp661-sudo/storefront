@@ -149,6 +149,13 @@ function sync_catalog(string $mode = 'auto'): array
         }
 
         $deactivated = 0;
+        $warning = null;
+        if ($full && $count === 0 && (int) db_one("SELECT COUNT(*) AS n FROM products WHERE status = 'active'")['n'] > 0) {
+            // The ERP returned nothing at all (e.g. no product has "Show in Website" ticked, or a
+            // filter changed). Emptying the shop is almost never intended: keep what we have.
+            $warning = 'The ERP returned no products, so the store kept its current catalogue. Tick "Show in Website" on the products you want online.';
+            $full = false;
+        }
         if ($full) {
             $deactivated = db_query(
                 "UPDATE products SET status = 'inactive' WHERE synced_at < ? AND status <> 'inactive'",
@@ -159,12 +166,13 @@ function sync_catalog(string $mode = 'auto'): array
         $categories = sync_categories();
 
         db_query(
-            'UPDATE sync_state SET cursor_value = ?, last_run_at = ?, last_full_at = ?, last_error = NULL, lease_until = NULL WHERE name = ?',
-            [$cursor, $runStartedAt, $full ? $runStartedAt : $state['last_full_at'], SYNC_NAME]
+            'UPDATE sync_state SET cursor_value = ?, last_run_at = ?, last_full_at = ?, last_error = ?, lease_until = NULL WHERE name = ?',
+            [$cursor, $runStartedAt, $full ? $runStartedAt : $state['last_full_at'], $warning, SYNC_NAME]
         );
         return [
             'skipped' => false,
             'mode' => $full ? 'full' : 'incremental',
+            'warning' => $warning,
             'products' => $count,
             'deactivated' => $deactivated,
             'categories' => $categories,
