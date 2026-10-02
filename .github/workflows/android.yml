@@ -1,0 +1,67 @@
+# Builds the Mosaic Store Android app (mobile/).
+#   - Every push that touches mobile/: a debug APK you can install on a phone for testing.
+#   - Run manually (Actions → Android app → Run workflow) with the signing secrets set:
+#     also a signed .aab bundle to upload to Google Play.
+name: Android app
+
+on:
+  push:
+    paths: ["mobile/**", ".github/workflows/android.yml"]
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: "Version shown in the Play Store (e.g. 1.0.1)"
+        required: false
+        default: "1.0"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    env:
+      APP_VERSION_CODE: ${{ github.run_number }}
+      APP_VERSION_NAME: ${{ inputs.version_name || '1.0' }}
+      HAS_KEY: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+      - run: npm ci
+      - run: npx cap sync android
+
+      - name: Build debug APK
+        working-directory: mobile/android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mosaic-store-debug-apk
+          path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Build signed Play Store bundle
+        if: github.event_name == 'workflow_dispatch' && env.HAS_KEY == 'true'
+        working-directory: mobile/android
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/upload.jks"
+          ANDROID_KEYSTORE_FILE="$RUNNER_TEMP/upload.jks" ./gradlew bundleRelease --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'workflow_dispatch'
+        with:
+          name: mosaic-store-play-bundle
+          path: mobile/android/app/build/outputs/bundle/release/*.aab
+          if-no-files-found: ignore

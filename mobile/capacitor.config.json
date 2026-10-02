@@ -1,0 +1,28 @@
+{
+  "appId": "in.mosaicengine.store",
+  "appName": "Mosaic Store",
+  "webDir": "www",
+  "server": {
+    "url": "https://store.mosaicengine.in/?source=app",
+    "allowNavigation": ["store.mosaicengine.in", "erp.mosaicengine.in"],
+    "errorPath": "offline.html"
+  },
+  "android": {
+    "backgroundColor": "#F6F3EE",
+    "allowMixedContent": false,
+    "appendUserAgent": "MosaicStoreApp/1.0"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1200,
+      "launchAutoHide": true,
+      "backgroundColor": "#F6F3EE",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "style": "LIGHT",
+      "backgroundColor": "#F6F3EE",
+      "overlaysWebView": false
+    }
+  }
+}

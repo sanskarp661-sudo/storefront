@@ -19,6 +19,10 @@ $badge = fn(int $n) => $n > 0 ? '<span class="dot-n">' . ($n > 99 ? '99+' : $n) 
 <meta name="theme-color" content="#111111">
 <?php if ($noindex): ?><meta name="robots" content="noindex, nofollow"><?php endif; ?>
 <link rel="icon" href="<?= e(url('favicon.ico')) ?>">
+<link rel="manifest" href="<?= e(url('manifest.webmanifest')) ?>">
+<link rel="apple-touch-icon" href="<?= e(url('assets/icons/apple-touch-icon.png')) ?>">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="<?= e(STORE_NAME) ?>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">

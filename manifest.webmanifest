@@ -1,0 +1,23 @@
+{
+  "name": "Mosaic Store",
+  "short_name": "Mosaic",
+  "description": "Shop Mosaic Store: live stock, cash on delivery across India.",
+  "id": "./",
+  "start_url": "./?source=app",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F6F3EE",
+  "theme_color": "#111111",
+  "categories": ["shopping"],
+  "icons": [
+    { "src": "assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "assets/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "My orders", "url": "./account.php?tab=orders" },
+    { "name": "Bag", "url": "./cart.php" },
+    { "name": "Track an order", "url": "./track.php" }
+  ]
+}

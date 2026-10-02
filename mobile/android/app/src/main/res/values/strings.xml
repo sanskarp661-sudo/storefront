@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Mosaic Store</string>
+    <string name="title_activity_main">Mosaic Store</string>
+    <string name="package_name">in.mosaicengine.store</string>
+    <string name="custom_url_scheme">in.mosaicengine.store</string>
+</resources>

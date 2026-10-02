@@ -189,5 +189,10 @@
       document.addEventListener("click", function (e) { if (!form.contains(e.target)) hide(); });
       input.addEventListener("keydown", function (e) { if (e.key === "Escape") hide(); });
     });
+
+    // Installable app: offline page + home-screen install (see sw.js).
+    if ("serviceWorker" in navigator && location.protocol === "https:") {
+      navigator.serviceWorker.register(base + "/sw.js", { scope: base + "/" }).catch(function () {});
+    }
   });
 })();

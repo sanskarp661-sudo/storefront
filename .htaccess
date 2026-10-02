@@ -11,7 +11,7 @@ DirectoryIndex index.php
   RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
   # Nothing outside the public pages may be requested directly.
-  RewriteRule ^(includes|cron|sql|tests|tools)(/|$) - [F,L]
+  RewriteRule ^(includes|cron|sql|tests|tools|mobile)(/|$) - [F,L]
   RewriteRule (^|/)\. - [F,L]
   RewriteRule ^(config\.php|config\.sample\.php)$ - [F,L]
 </IfModule>
@@ -21,9 +21,19 @@ DirectoryIndex index.php
   Require all denied
 </FilesMatch>
 
+AddType application/manifest+json .webmanifest
+
+# The service worker must always be re-checked so app updates reach customers.
+<Files "sw.js">
+  <IfModule mod_headers.c>
+    Header set Cache-Control "no-cache"
+  </IfModule>
+</Files>
+
 <IfModule mod_expires.c>
   ExpiresActive On
   ExpiresByType text/css "access plus 1 year"
   ExpiresByType application/javascript "access plus 1 year"
   ExpiresByType image/x-icon "access plus 1 month"
+  ExpiresByType image/png "access plus 1 month"
 </IfModule>
