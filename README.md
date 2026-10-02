@@ -66,7 +66,8 @@ Replace `u123456789` with your Hostinger username. It's the first part of the pa
 
 Each run:
 - fetches products changed since the last run (`products.php?since=…`)
-- does a full re-sync every 6 hours (this also hides products removed in the ERP)
+- does a full re-sync (at most every 10 minutes, so on every 15-minute run): this also hides products deleted in the ERP
+  or with "Show in Website" unticked
 - refreshes categories
 - settles any order whose submission to the ERP timed out
 

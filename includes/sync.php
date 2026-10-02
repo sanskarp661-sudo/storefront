@@ -6,13 +6,18 @@ declare(strict_types=1);
  *
  * - Incremental runs fetch products.php?since=<newest updated_at seen so far>.
  *   The cursor is the ERP's own timestamp, so server clocks never need to agree.
- * - Every FULL_SYNC_HOURS a full run walks every page and marks products the ERP
+ * - Every FULL_SYNC_MINUTES a full run walks every page and marks products the ERP
  *   no longer returns as inactive (an incremental fetch can't see deletions).
  * - A lease row prevents two cron runs from overlapping.
  */
 
 const SYNC_NAME = 'catalog';
-const FULL_SYNC_HOURS = 6;
+/**
+ * A full run is the only way to see products deleted (or un-ticked from "Show in Website")
+ * in the ERP, so with the 15-minute cron every run is a full one. The catalogue is small
+ * enough that this is a few API pages; incremental runs only happen if cron runs more often.
+ */
+const FULL_SYNC_MINUTES = 10;
 const SYNC_LEASE_SECONDS = 600;
 const SYNC_PER_PAGE = 200;
 const SYNC_MAX_PAGES = 1000;
@@ -117,7 +122,7 @@ function acquire_sync_lease(): ?array
 }
 
 /**
- * Runs a sync. $mode: 'auto' (full every FULL_SYNC_HOURS, else incremental), 'full' or 'incremental'.
+ * Runs a sync. $mode: 'auto' (full every FULL_SYNC_MINUTES, else incremental), 'full' or 'incremental'.
  * Returns a summary array; throws on ERP/database errors (after recording them).
  */
 function sync_catalog(string $mode = 'auto'): array
@@ -129,7 +134,7 @@ function sync_catalog(string $mode = 'auto'): array
     $full = $mode === 'full'
         || empty($state['cursor_value'])
         || ($mode === 'auto' && (empty($state['last_full_at'])
-            || strtotime($state['last_full_at'] . ' UTC') < time() - FULL_SYNC_HOURS * 3600));
+            || strtotime($state['last_full_at'] . ' UTC') < time() - FULL_SYNC_MINUTES * 60));
 
     try {
         $since = $full ? null : $state['cursor_value'];
