@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS products (
   name                VARCHAR(255)  NOT NULL,
   description         TEXT          NULL,
   category            VARCHAR(191)  NULL,
+  sub_category        VARCHAR(191)  NULL,  -- the ERP's "Item Category" (Shirt, T-Shirt, Trouser…)
   brand               VARCHAR(191)  NULL,
   image_url           VARCHAR(1024) NULL,
   images              TEXT          NULL,  -- JSON list of all image URLs (main image first)
@@ -25,7 +26,7 @@ CREATE TABLE IF NOT EXISTS products (
   synced_at           DATETIME(3)   NOT NULL,
   search_text         TEXT          NOT NULL,
   KEY idx_products_sku (sku),
-  KEY idx_products_category (status, category),
+  KEY idx_products_category (status, category, sub_category),
   KEY idx_products_brand (status, brand),
   KEY idx_products_updated (erp_updated_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

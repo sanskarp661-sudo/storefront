@@ -115,6 +115,9 @@ SSL: `.htaccess` redirects HTTP to HTTPS, so the subdomain needs its (free) SSL 
 ## How it works
 
 **Catalogue.** The cron job copies the ERP catalogue into the `products` and `categories` tables.
+Each product's **Item Category** in the ERP (Shirt, T-Shirt, Trouser…) becomes a sub-category of its Category: the
+category page shows a row of type pills and the filter sidebar nests them. It needs the ERP's `products.php` to send
+`sub_category`; products without an Item Category simply appear under "All <category>".
 The incremental cursor is the newest `updated_at` the ERP has returned, so it never depends on the server's clock.
 Stock shown is the ERP's `available_quantity`. Prices exclude GST, and the pages say that GST is confirmed on the invoice.
 

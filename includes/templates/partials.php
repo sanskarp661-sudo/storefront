@@ -70,15 +70,22 @@ function initials(string $name): string
  * Product photo shown whole ("contain") on white, like leading electronics stores.
  * Without a photo: a branded gradient tile with the product's initials and category icon.
  */
-function product_image(?string $src, string $alt, string $class = '', bool $eager = false, ?string $category = null, string $padding = 'p-5'): string
+/**
+ * Product photo, or a tinted initials tile when there is none. $cover = true (product cards)
+ * fills a uniform 4:5 portrait frame edge to edge, cropping from the top so faces and
+ * collars stay in view, like fashion stores do; otherwise the whole photo sits on white.
+ */
+function product_image(?string $src, string $alt, string $class = '', bool $eager = false, ?string $category = null, string $padding = 'p-5', bool $cover = false): string
 {
+    $aspect = $cover ? 'aspect-[4/5]' : 'aspect-square';
     if ($src && preg_match('#^https?://#i', $src)) {
-        return '<div class="relative aspect-square overflow-hidden bg-white ' . e($class) . '">'
-            . '<img src="' . e($src) . '" alt="' . e($alt) . '" loading="' . ($eager ? 'eager' : 'lazy') . '" decoding="async" class="absolute inset-0 h-full w-full object-contain ' . e($padding) . '">'
+        $fit = $cover ? 'object-cover object-top' : 'object-contain ' . e($padding);
+        return '<div class="relative ' . $aspect . ' overflow-hidden bg-slate-50 ' . e($class) . '">'
+            . '<img src="' . e($src) . '" alt="' . e($alt) . '" loading="' . ($eager ? 'eager' : 'lazy') . '" decoding="async" class="absolute inset-0 h-full w-full ' . $fit . '">'
             . '</div>';
     }
     [$bg, $fg, $blob] = TILE_TINTS[crc32($alt) % count(TILE_TINTS)];
-    return '<div class="relative aspect-square overflow-hidden bg-gradient-to-br ' . $bg . ' ' . e($class) . '" role="img" aria-label="' . e($alt) . '">'
+    return '<div class="relative ' . $aspect . ' overflow-hidden bg-gradient-to-br ' . $bg . ' ' . e($class) . '" role="img" aria-label="' . e($alt) . '">'
         . '<div class="absolute -right-6 -top-6 h-2/5 w-2/5 rounded-full ' . $blob . '"></div>'
         . '<div class="absolute -bottom-8 -left-4 h-1/2 w-1/2 rounded-full ' . $blob . '"></div>'
         . '<div class="absolute inset-0 flex flex-col items-center justify-center gap-1.5 ' . $fg . '">'
@@ -123,15 +130,15 @@ function product_card(array $p, bool $eager = false): string
       <?= wishlist_button($p['sku'], 'absolute right-3 top-3 z-10') ?>
       <a href="<?= e(product_url($p['sku'])) ?>" class="block overflow-hidden">
         <div class="relative">
-          <?= product_image($p['image_url'], $p['name'], 'transition duration-500 group-hover:scale-105' . (count($p['images'] ?? []) > 1 ? ' group-hover:opacity-0' : '') . ($out ? ' opacity-60 grayscale' : ''), $eager, $p['category']) ?>
+          <?= product_image($p['image_url'], $p['name'], 'transition duration-500 group-hover:scale-105' . (count($p['images'] ?? []) > 1 ? ' group-hover:opacity-0' : '') . ($out ? ' opacity-60 grayscale' : ''), $eager, $p['category'], 'p-5', true) ?>
           <?php if (count($p['images'] ?? []) > 1): /* second photo on hover, like most fashion/electronics stores */ ?>
-            <img src="<?= e($p['images'][1]) ?>" alt="" loading="lazy" decoding="async" class="absolute inset-0 h-full w-full bg-white object-contain p-5 opacity-0 transition duration-500 group-hover:scale-105 group-hover:opacity-100<?= $out ? ' grayscale' : '' ?>">
+            <img src="<?= e($p['images'][1]) ?>" alt="" loading="lazy" decoding="async" class="absolute inset-0 h-full w-full bg-slate-50 object-cover object-top opacity-0 transition duration-500 group-hover:scale-105 group-hover:opacity-100<?= $out ? ' grayscale' : '' ?>">
             <span class="absolute bottom-2 right-2 rounded-full bg-ink/70 px-2 py-0.5 text-[10px] font-bold text-white"><?= count($p['images']) ?> photos</span>
           <?php endif; ?>
         </div>
       </a>
       <div class="flex flex-1 flex-col gap-1.5 border-t border-line/70 p-4">
-        <p class="text-[11px] font-bold uppercase tracking-wider text-brand"><?= e($p['brand'] ?: ($p['category'] ?: STORE_NAME)) ?></p>
+        <p class="truncate text-[11px] font-bold uppercase tracking-wider text-brand"><?= e($p['brand'] ?: ($p['category'] ?: STORE_NAME)) ?><?php if (!empty($p['sub_category'])): ?><span class="hidden text-muted sm:inline"> · <?= e($p['sub_category']) ?></span><?php endif; ?></p>
         <a href="<?= e(product_url($p['sku'])) ?>" class="line-clamp-2 min-h-[2.5rem] text-[15px] font-semibold leading-tight text-ink hover:text-brand"><?= e($p['name']) ?></a>
         <div class="mt-auto flex items-end justify-between gap-2 pt-2">
           <p class="text-lg font-extrabold leading-none tracking-tight"><?= e(format_price($p['price'], $p['currency'])) ?>

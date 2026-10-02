@@ -41,6 +41,7 @@ render_page($product['name'], function () use ($product, $related, $recent, $inC
   <?php
   $crumbs = [['Home', url('')], ['Shop', url('products.php')]];
   if ($p['category']) $crumbs[] = [$p['category'], category_url($p['category'])];
+  if ($p['category'] && $p['sub_category']) $crumbs[] = [$p['sub_category'], url('products.php', ['category' => $p['category'], 'sub' => $p['sub_category']])];
   $crumbs[] = [$p['name'], null];
   echo breadcrumbs($crumbs);
   ?>

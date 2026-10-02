@@ -8,7 +8,7 @@ declare(strict_types=1);
  * sql/schema.sql always contains the full, current schema for fresh installs.
  */
 
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 
 function ensure_schema(): void
 {
@@ -77,6 +77,16 @@ function ensure_schema(): void
         $pdo->exec('ALTER TABLE products ADD COLUMN images TEXT NULL AFTER image_url');
         // Gallery photos added in the ERP may not change a product's updated_at,
         // so make the next cron run a full sync to pick them all up.
+        $pdo->exec("UPDATE sync_state SET cursor_value = NULL WHERE name = 'catalog'");
+    }
+
+    // v4: sub-category (the ERP's "Item Category") under each category.
+    $hasSub = db_one(
+        "SELECT 1 AS x FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'products' AND COLUMN_NAME = 'sub_category'"
+    );
+    if (!$hasSub) {
+        $pdo->exec('ALTER TABLE products ADD COLUMN sub_category VARCHAR(191) NULL AFTER category');
+        // Fill it in for every product on the next cron run.
         $pdo->exec("UPDATE sync_state SET cursor_value = NULL WHERE name = 'catalog'");
     }
 

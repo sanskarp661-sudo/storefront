@@ -32,6 +32,13 @@ function product_image_list(array $p): array
     return array_slice($urls, 0, 12);
 }
 
+/** The ERP's "Item Category" (Shirt, T-Shirt, Trouser…), shown as a sub-category of the product's category. */
+function erp_sub_category(array $p): ?string
+{
+    $sub = trim((string) ($p['sub_category'] ?? ''));
+    return $sub === '' ? null : mb_substr($sub, 0, 191);
+}
+
 /** Upserts ERP product records into the local products table. */
 function upsert_products(array $products, ?string $syncedAt = null): void
 {
@@ -42,7 +49,7 @@ function upsert_products(array $products, ?string $syncedAt = null): void
         $values = [];
         $params = [];
         foreach ($chunk as $p) {
-            $values[] = '(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)';
+            $values[] = '(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)';
             $images = product_image_list($p);
             array_push(
                 $params,
@@ -51,6 +58,7 @@ function upsert_products(array $products, ?string $syncedAt = null): void
                 (string) $p['name'],
                 $p['description'] ?? null,
                 $p['category'] ?? null,
+                erp_sub_category($p),
                 $p['brand'] ?? null,
                 $images[0] ?? null,
                 $images ? json_encode($images, JSON_UNESCAPED_SLASHES) : null,
@@ -62,15 +70,16 @@ function upsert_products(array $products, ?string $syncedAt = null): void
                 ($p['status'] ?? '') ?: 'active',
                 db_datetime($p['updated_at'] ?? null),
                 $syncedAt,
-                mb_strtolower(implode(' ', array_filter([$p['name'] ?? '', $p['sku'] ?? '', $p['brand'] ?? '', $p['category'] ?? ''])))
+                mb_strtolower(implode(' ', array_filter([$p['name'] ?? '', $p['sku'] ?? '', $p['brand'] ?? '', $p['category'] ?? '', erp_sub_category($p) ?? ''])))
             );
         }
         db_query(
-            'INSERT INTO products (erp_id, sku, name, description, category, brand, image_url, images, unit, price, currency,
+            'INSERT INTO products (erp_id, sku, name, description, category, sub_category, brand, image_url, images, unit, price, currency,
                                    quantity_on_hand, available_quantity, status, erp_updated_at, synced_at, search_text)
              VALUES ' . implode(',', $values) . '
              ON DUPLICATE KEY UPDATE
                sku = VALUES(sku), name = VALUES(name), description = VALUES(description), category = VALUES(category),
+               sub_category = VALUES(sub_category),
                brand = VALUES(brand), image_url = VALUES(image_url), images = VALUES(images), unit = VALUES(unit), price = VALUES(price),
                currency = VALUES(currency), quantity_on_hand = VALUES(quantity_on_hand),
                available_quantity = VALUES(available_quantity), status = VALUES(status),

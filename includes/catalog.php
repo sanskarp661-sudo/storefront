@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-const PRODUCT_COLUMNS = 'sku, name, description, category, brand, image_url, images, unit, price, currency, available_quantity';
+const PRODUCT_COLUMNS = 'sku, name, description, category, sub_category, brand, image_url, images, unit, price, currency, available_quantity';
 
 /** All image URLs for a product row: the stored gallery list, else just the main image. */
 function product_images_from_row(array $r): array
@@ -18,6 +18,7 @@ function product_from_row(array $r): array
         'name' => $r['name'],
         'description' => $r['description'],
         'category' => $r['category'],
+        'sub_category' => $r['sub_category'] ?? null,
         'brand' => $r['brand'],
         'image_url' => $r['image_url'],
         'images' => product_images_from_row($r),
@@ -55,6 +56,10 @@ function search_products(array $opts): array
     if (!empty($opts['category'])) {
         $where[] = 'category = :category';
         $params['category'] = $opts['category'];
+    }
+    if (!empty($opts['sub'])) {
+        $where[] = 'sub_category = :sub';
+        $params['sub'] = $opts['sub'];
     }
     if (!empty($opts['brand'])) {
         $where[] = 'brand = :brand';
@@ -131,6 +136,18 @@ function get_categories(): array
           ORDER BY n DESC, c.name"
     );
     return $cache = array_map(fn($r) => ['name' => $r['name'], 'count' => (int) $r['n'], 'image_url' => $r['image_url']], $rows);
+}
+
+/** Sub-categories (the ERP's Item Category) that have active products in a category, with counts. */
+function get_subcategories(string $category): array
+{
+    $rows = db_all(
+        "SELECT sub_category AS name, COUNT(*) AS n FROM products
+          WHERE status = 'active' AND category = ? AND sub_category IS NOT NULL AND sub_category <> ''
+          GROUP BY sub_category ORDER BY sub_category",
+        [$category]
+    );
+    return array_map(fn($r) => ['name' => $r['name'], 'count' => (int) $r['n']], $rows);
 }
 
 /** Category names for navigation; never breaks the page if the database is unavailable. */

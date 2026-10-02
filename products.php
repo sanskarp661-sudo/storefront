@@ -3,6 +3,7 @@ require __DIR__ . '/includes/bootstrap.php';
 
 $q = get_string('q', 100);
 $category = get_string('category');
+$sub = $category !== '' ? get_string('sub') : '';
 $brand = get_string('brand');
 $inStock = get_string('stock') === '1';
 $sort = array_key_exists(get_string('sort'), PRODUCT_SORTS) ? get_string('sort') : 'featured';
@@ -10,26 +11,28 @@ $page = max(1, (int) get_string('page'));
 $minPrice = is_numeric(get_string('min')) ? max(0, (float) get_string('min')) : null;
 $maxPrice = is_numeric(get_string('max')) ? max(0, (float) get_string('max')) : null;
 
-$result = search_products(['q' => $q, 'category' => $category, 'brand' => $brand, 'in_stock' => $inStock, 'sort' => $sort, 'page' => $page, 'per_page' => 24, 'min_price' => $minPrice, 'max_price' => $maxPrice]);
+$result = search_products(['q' => $q, 'category' => $category, 'sub' => $sub, 'brand' => $brand, 'in_stock' => $inStock, 'sort' => $sort, 'page' => $page, 'per_page' => 24, 'min_price' => $minPrice, 'max_price' => $maxPrice]);
 $categories = get_categories();
+$subcategories = $category ? get_subcategories($category) : [];
 $brands = get_brands($category ?: null);
 [$lo, $hi] = price_bounds($category ?: null);
 
-$state = ['q' => $q, 'category' => $category, 'brand' => $brand, 'stock' => $inStock ? '1' : null, 'sort' => $sort === 'featured' ? null : $sort,
+$state = ['q' => $q, 'category' => $category, 'sub' => $sub ?: null, 'brand' => $brand, 'stock' => $inStock ? '1' : null, 'sort' => $sort === 'featured' ? null : $sort,
     'min' => $minPrice !== null ? (string) $minPrice : null, 'max' => $maxPrice !== null ? (string) $maxPrice : null];
 $link = fn(array $overrides = []) => url('products.php', array_merge($state, ['page' => null], $overrides));
 
 $chips = [];
 if ($q !== '') $chips[] = ['“' . $q . '”', $link(['q' => null])];
-if ($category) $chips[] = [$category, $link(['category' => null, 'brand' => null])];
+if ($category) $chips[] = [$category, $link(['category' => null, 'sub' => null, 'brand' => null])];
+if ($sub) $chips[] = [$sub, $link(['sub' => null])];
 if ($brand) $chips[] = [$brand, $link(['brand' => null])];
 if ($minPrice !== null || $maxPrice !== null) $chips[] = [($minPrice !== null ? format_price($minPrice) : '₹0') . ' – ' . ($maxPrice !== null ? format_price($maxPrice) : 'any'), $link(['min' => null, 'max' => null])];
 if ($inStock) $chips[] = ['In stock', $link(['stock' => null])];
 
-$heading = $q !== '' ? "Results for “{$q}”" : ($category ?: 'All products');
+$heading = $q !== '' ? "Results for “{$q}”" : ($sub ?: ($category ?: 'All products'));
 
-render_page($q !== '' ? "Search: $q" : ($category ?: 'Shop all'), function () use ($q, $category, $brand, $inStock, $sort, $page, $result, $categories, $brands, $link, $heading, $chips, $minPrice, $maxPrice, $lo, $hi, $state) {
-    $filters = function (string $idPrefix) use ($categories, $brands, $category, $brand, $inStock, $link, $minPrice, $maxPrice, $lo, $hi, $state) {
+render_page($q !== '' ? "Search: $q" : ($sub ? "$sub · $category" : ($category ?: 'Shop all')), function () use ($q, $category, $sub, $subcategories, $brand, $inStock, $sort, $page, $result, $categories, $brands, $link, $heading, $chips, $minPrice, $maxPrice, $lo, $hi, $state) {
+    $filters = function (string $idPrefix) use ($categories, $subcategories, $brands, $category, $sub, $brand, $inStock, $link, $minPrice, $maxPrice, $lo, $hi, $state) {
         $row = fn(bool $on, string $href, string $label, string $count = '') =>
             '<a href="' . e($href) . '" class="flex items-center gap-3 rounded-xl px-3 py-2 text-sm ' . ($on ? 'bg-brand-soft font-bold text-brand' : 'text-ink-soft hover:bg-slate-50 hover:text-ink') . '">'
             . '<span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 ' . ($on ? 'border-brand bg-brand text-white' : 'border-slate-300') . '">' . ($on ? icon('check', 'h-3 w-3', 3) : '') . '</span>'
@@ -38,8 +41,15 @@ render_page($q !== '' ? "Search: $q" : ($category ?: 'Shop all'), function () us
         <div class="space-y-6">
           <div>
             <h3 class="mb-2 px-3 text-xs font-bold uppercase tracking-wider text-muted">Category</h3>
-            <?= $row($category === '', $link(['category' => null, 'brand' => null]), 'All categories') ?>
-            <?php foreach ($categories as $c) echo $row($category === $c['name'], $link(['category' => $c['name'], 'brand' => null]), $c['name'], (string) $c['count']); ?>
+            <?= $row($category === '', $link(['category' => null, 'sub' => null, 'brand' => null]), 'All categories') ?>
+            <?php foreach ($categories as $c): ?>
+              <?= $row($category === $c['name'] && !$sub, $link(['category' => $c['name'], 'sub' => null, 'brand' => null]), $c['name'], (string) $c['count']) ?>
+              <?php if ($category === $c['name'] && $subcategories): ?>
+                <div class="ml-5 border-l-2 border-line pl-2">
+                  <?php foreach ($subcategories as $sc) echo $row($sub === $sc['name'], $link(['sub' => $sub === $sc['name'] ? null : $sc['name']]), $sc['name'], (string) $sc['count']); ?>
+                </div>
+              <?php endif; ?>
+            <?php endforeach; ?>
           </div>
           <?php if ($brands): ?>
             <div>
@@ -69,16 +79,26 @@ render_page($q !== '' ? "Search: $q" : ($category ?: 'Shop all'), function () us
     };
     ?>
 <div class="container-page py-8">
-  <?= breadcrumbs($category ? [['Home', url('')], ['Shop', url('products.php')], [$category, null]] : [['Home', url('')], ['Shop', null]]) ?>
+  <?= breadcrumbs($category
+      ? array_merge([['Home', url('')], ['Shop', url('products.php')]], $sub ? [[$category, $link(['sub' => null])], [$sub, null]] : [[$category, null]])
+      : [['Home', url('')], ['Shop', null]]) ?>
 
   <?php if ($category && !$q): ?>
     <div class="relative mb-8 overflow-hidden rounded-[1.75rem] bg-gradient-to-br <?= tile_gradient($category) ?> p-7 text-white shadow-card sm:p-9">
       <div class="absolute -right-10 -top-10 h-48 w-48 rounded-full bg-white/15"></div>
       <span class="absolute bottom-0 right-8 hidden text-white/20 sm:block"><?= icon(category_icon($category), 'h-40 w-40', 1.25) ?></span>
-      <p class="relative text-xs font-bold uppercase tracking-wider text-white/75">Category</p>
-      <h1 class="relative mt-1 text-3xl font-extrabold tracking-tight sm:text-4xl"><?= e($category) ?></h1>
+      <p class="relative text-xs font-bold uppercase tracking-wider text-white/75"><?= $sub ? e($category) : 'Category' ?></p>
+      <h1 class="relative mt-1 text-3xl font-extrabold tracking-tight sm:text-4xl"><?= e($sub ?: $category) ?></h1>
       <p class="relative mt-2 text-sm text-white/80"><?= $result['total'] ?> product<?= $result['total'] === 1 ? '' : 's' ?> · Cash on Delivery available</p>
     </div>
+    <?php if ($subcategories): /* Shop-by-type pills: All · Shirt · T-Shirt · Trouser… */ ?>
+      <nav class="-mt-3 mb-8 flex gap-2 overflow-x-auto pb-1" aria-label="<?= e($category) ?> types">
+        <?php foreach (array_merge([['name' => '', 'label' => 'All ' . $category]], $subcategories) as $sc):
+            $on = $sub === $sc['name']; ?>
+          <a href="<?= e($link(['sub' => $sc['name'] ?: null])) ?>"<?= $on ? ' aria-current="page"' : '' ?> class="shrink-0 rounded-full px-4 py-2 text-sm font-bold transition <?= $on ? 'bg-ink text-white shadow-card' : 'bg-white text-ink ring-1 ring-line hover:ring-brand hover:text-brand' ?>"><?= e($sc['label'] ?? $sc['name']) ?><?php if (isset($sc['count'])): ?> <span class="<?= $on ? 'text-white/70' : 'text-muted' ?> font-semibold"><?= $sc['count'] ?></span><?php endif; ?></a>
+        <?php endforeach; ?>
+      </nav>
+    <?php endif; ?>
   <?php else: ?>
     <div class="mb-6">
       <h1 class="text-3xl font-extrabold tracking-tight"><?= e($heading) ?></h1>
