@@ -1,7 +1,7 @@
 <?php
 /** @var array $order @var bool $delivered */
 if ($order['status'] === 'cancelled'): ?>
-  <div class="flex items-center gap-4 rounded-2xl bg-slate-100 p-5 text-sm">
+  <div class="flex items-center gap-4 rounded-2xl bg-linen p-5 text-sm">
     <span class="flex h-11 w-11 items-center justify-center rounded-full bg-slate-700 text-white"><?= icon('x', 'h-5 w-5') ?></span>
     <div><p class="font-bold">Order cancelled</p><p class="text-ink-soft">This order has been cancelled. Contact us if you have questions.</p></div>
   </div>
@@ -20,7 +20,7 @@ if ($order['status'] === 'cancelled'): ?>
         <?php if ($i < count($steps) - 1): ?>
           <span aria-hidden="true" class="absolute left-[1.35rem] top-12 h-[calc(100%-1.5rem)] w-1 rounded sm:left-[calc(50%+1.75rem)] sm:top-[1.35rem] sm:h-1 sm:w-[calc(100%-3.5rem)] <?= $i < $reached ? 'bg-brand' : 'bg-line' ?>"></span>
         <?php endif; ?>
-        <span class="relative z-10 flex h-11 w-11 shrink-0 items-center justify-center rounded-full <?= $done ? 'bg-brand text-white shadow-[0_6px_16px_-6px_rgb(79_70_229/0.7)]' : 'bg-slate-100 text-muted' ?> <?= $current ? 'ring-8 ring-brand/15' : '' ?>">
+        <span class="relative z-10 flex h-11 w-11 shrink-0 items-center justify-center rounded-full <?= $done ? 'bg-brand text-white shadow-[0_6px_16px_-6px_rgb(79_70_229/0.7)]' : 'bg-linen text-muted' ?> <?= $current ? 'ring-8 ring-brand/15' : '' ?>">
           <?= icon($ic, 'h-5 w-5') ?>
         </span>
         <div class="text-sm sm:mt-1">

@@ -1,31 +1,6 @@
 <?php
 declare(strict_types=1);
 
-/** Gradient palette used for image-less products and category tiles (picked by a stable hash). */
-const TILE_GRADIENTS = [
-    'from-indigo-500 to-violet-600',
-    'from-orange-400 to-rose-500',
-    'from-emerald-400 to-teal-600',
-    'from-sky-400 to-blue-600',
-    'from-fuchsia-500 to-pink-600',
-    'from-amber-400 to-orange-500',
-];
-
-function tile_gradient(string $key): string
-{
-    return TILE_GRADIENTS[crc32($key) % count(TILE_GRADIENTS)];
-}
-
-/** Soft tinted backgrounds for products without a photo: [background, text colour, blob colour]. */
-const TILE_TINTS = [
-    ['from-indigo-50 to-violet-100', 'text-indigo-600', 'bg-indigo-200/40'],
-    ['from-orange-50 to-rose-100', 'text-orange-600', 'bg-orange-200/40'],
-    ['from-emerald-50 to-teal-100', 'text-emerald-600', 'bg-emerald-200/40'],
-    ['from-sky-50 to-blue-100', 'text-sky-600', 'bg-sky-200/40'],
-    ['from-fuchsia-50 to-pink-100', 'text-fuchsia-600', 'bg-fuchsia-200/40'],
-    ['from-amber-50 to-orange-100', 'text-amber-600', 'bg-amber-200/50'],
-];
-
 /** A Lucide icon that fits a category name (falls back to a generic box). */
 function category_icon(?string $category): string
 {
@@ -71,40 +46,33 @@ function initials(string $name): string
  * Without a photo: a branded gradient tile with the product's initials and category icon.
  */
 /**
- * Product photo, or a tinted initials tile when there is none. $cover = true (product cards)
- * fills a uniform 4:5 portrait frame edge to edge, cropping from the top so faces and
- * collars stay in view, like fashion stores do; otherwise the whole photo sits on white.
+ * Product photo, or a linen initials tile when there is none. $cover = true (product cards)
+ * fills the design's 3:4 portrait "stage" edge to edge, anchored to the top so faces and
+ * collars stay in view; otherwise the whole photo sits on white (cart thumbnails etc.).
  */
 function product_image(?string $src, string $alt, string $class = '', bool $eager = false, ?string $category = null, string $padding = 'p-5', bool $cover = false): string
 {
-    $aspect = $cover ? 'aspect-[4/5]' : 'aspect-square';
+    $aspect = $cover ? 'aspect-[3/4]' : 'aspect-square';
     if ($src && preg_match('#^https?://#i', $src)) {
         $fit = $cover ? 'object-cover object-top' : 'object-contain ' . e($padding);
-        return '<div class="relative ' . $aspect . ' overflow-hidden bg-slate-50 ' . e($class) . '">'
-            . '<img src="' . e($src) . '" alt="' . e($alt) . '" loading="' . ($eager ? 'eager' : 'lazy') . '" decoding="async" class="absolute inset-0 h-full w-full ' . $fit . '">'
+        return '<div class="relative ' . $aspect . ' overflow-hidden ' . ($cover ? 'bg-linen' : 'bg-white') . ' ' . e($class) . '">'
+            . '<img src="' . e($src) . '" alt="' . e($alt) . '" loading="' . ($eager ? 'eager' : 'lazy') . '" decoding="async" class="pc-main absolute inset-0 h-full w-full ' . $fit . '">'
             . '</div>';
     }
-    [$bg, $fg, $blob] = TILE_TINTS[crc32($alt) % count(TILE_TINTS)];
-    return '<div class="relative ' . $aspect . ' overflow-hidden bg-gradient-to-br ' . $bg . ' ' . e($class) . '" role="img" aria-label="' . e($alt) . '">'
-        . '<div class="absolute -right-6 -top-6 h-2/5 w-2/5 rounded-full ' . $blob . '"></div>'
-        . '<div class="absolute -bottom-8 -left-4 h-1/2 w-1/2 rounded-full ' . $blob . '"></div>'
-        . '<div class="absolute inset-0 flex flex-col items-center justify-center gap-1.5 ' . $fg . '">'
-        . '<span class="opacity-60">' . icon(category_icon($category), 'h-1/6 w-1/6', 1.5) . '</span>'
-        . '<span class="text-[clamp(1.1rem,4vw,2.5rem)] font-extrabold tracking-tight">' . e(initials($alt)) . '</span>'
-        . '</div></div>';
+    return '<div class="relative ' . $aspect . ' flex flex-col items-center justify-center gap-2 overflow-hidden bg-linen text-ink-soft ' . e($class) . '" role="img" aria-label="' . e($alt) . '">'
+        . '<span class="opacity-50">' . icon(category_icon($category), 'h-1/6 w-1/6', 1.2) . '</span>'
+        . '<span class="font-display text-[clamp(1.4rem,4vw,2.6rem)] leading-none text-ink">' . e(initials($alt)) . '</span>'
+        . '</div>';
 }
 
 function stock_badge(float $available, bool $compact = false): string
 {
-    if ($available <= 0) {
-        return '<span class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-slate-500">Out of stock</span>';
-    }
+    if ($available <= 0) return '<span class="badge b-oos">Sold out</span>';
     if ($available <= 5) {
         $q = format_quantity($available);
-        return '<span class="inline-flex items-center gap-1 rounded-full bg-accent-soft px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-accent-dark">'
-            . icon('flame', 'h-3 w-3') . ($compact ? "Only $q left" : "Hurry, only $q left") . '</span>';
+        return '<span class="badge b-low">' . ($compact ? 'Few left' : "Only $q left") . '</span>';
     }
-    return $compact ? '' : '<span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-emerald-700">' . icon('circle-check', 'h-3 w-3') . 'In stock</span>';
+    return $compact ? '' : '<span class="badge b-ok">In stock</span>';
 }
 
 /** Heart button that adds/removes a product from the wishlist (sends guests to sign in). */
@@ -115,68 +83,73 @@ function wishlist_button(string $sku, string $class = ''): string
         . csrf_field()
         . '<input type="hidden" name="sku" value="' . e($sku) . '">'
         . '<input type="hidden" name="return" value="' . e($_SERVER['REQUEST_URI'] ?? '/') . '">'
-        . '<button type="submit" class="flex h-9 w-9 items-center justify-center rounded-full bg-white/90 shadow-sm ring-1 ring-black/5 backdrop-blur transition hover:scale-110 '
-        . ($on ? 'text-rose-500' : 'text-slate-500 hover:text-rose-500') . '" aria-label="' . ($on ? 'Remove from wishlist' : 'Add to wishlist') . '" aria-pressed="' . ($on ? 'true' : 'false') . '">'
-        . '<span class="' . ($on ? '[&_path]:fill-current' : '') . '">' . icon('heart', 'h-[18px] w-[18px]') . '</span>'
+        . '<button type="submit" class="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 transition hover:bg-white '
+        . ($on ? 'text-rust' : 'text-ink hover:text-rust') . '" aria-label="' . ($on ? 'Remove from wishlist' : 'Add to wishlist') . '" aria-pressed="' . ($on ? 'true' : 'false') . '">'
+        . '<span class="' . ($on ? '[&_path]:fill-current' : '') . '">' . icon('heart', 'h-5 w-5', 1.6) . '</span>'
         . '</button></form>';
 }
 
 function product_card(array $p, bool $eager = false): string
 {
     $out = $p['available'] <= 0;
+    $low = !$out && $p['available'] <= 5;
+    $second = $p['images'][1] ?? null;
     ob_start(); ?>
-    <div class="group relative flex flex-col overflow-hidden rounded-2xl border border-line bg-white shadow-card transition duration-300 hover:-translate-y-1 hover:shadow-lift">
-      <div class="absolute left-3 top-3 z-10"><?= stock_badge($p['available'], true) ?></div>
-      <?= wishlist_button($p['sku'], 'absolute right-3 top-3 z-10') ?>
-      <a href="<?= e(product_url($p['sku'])) ?>" class="block overflow-hidden">
-        <div class="relative">
-          <?= product_image($p['image_url'], $p['name'], 'transition duration-500 group-hover:scale-105' . (count($p['images'] ?? []) > 1 ? ' group-hover:opacity-0' : '') . ($out ? ' opacity-60 grayscale' : ''), $eager, $p['category'], 'p-5', true) ?>
-          <?php if (count($p['images'] ?? []) > 1): /* second photo on hover, like most fashion/electronics stores */ ?>
-            <img src="<?= e($p['images'][1]) ?>" alt="" loading="lazy" decoding="async" class="absolute inset-0 h-full w-full bg-slate-50 object-cover object-top opacity-0 transition duration-500 group-hover:scale-105 group-hover:opacity-100<?= $out ? ' grayscale' : '' ?>">
-            <span class="absolute bottom-2 right-2 rounded-full bg-ink/70 px-2 py-0.5 text-[10px] font-bold text-white"><?= count($p['images']) ?> photos</span>
-          <?php endif; ?>
-        </div>
-      </a>
-      <div class="flex flex-1 flex-col gap-1.5 border-t border-line/70 p-4">
-        <p class="truncate text-[11px] font-bold uppercase tracking-wider text-brand"><?= e($p['brand'] ?: ($p['category'] ?: STORE_NAME)) ?><?php if (!empty($p['sub_category'])): ?><span class="hidden text-muted sm:inline"> · <?= e($p['sub_category']) ?></span><?php endif; ?></p>
-        <a href="<?= e(product_url($p['sku'])) ?>" class="line-clamp-2 min-h-[2.5rem] text-[15px] font-semibold leading-tight text-ink hover:text-brand"><?= e($p['name']) ?></a>
-        <div class="mt-auto flex items-end justify-between gap-2 pt-2">
-          <p class="text-lg font-extrabold leading-none tracking-tight"><?= e(format_price($p['price'], $p['currency'])) ?>
-            <?php if ($p['unit']): ?><span class="block pt-1 text-[11px] font-medium text-muted">per <?= e($p['unit']) ?> · excl. GST</span><?php endif; ?>
-          </p>
-          <?php if (!$out): ?>
-            <form method="post" action="<?= e(url('cart.php')) ?>">
-              <?= csrf_field() ?>
-              <input type="hidden" name="action" value="add"><input type="hidden" name="sku" value="<?= e($p['sku']) ?>"><input type="hidden" name="quantity" value="1">
-              <input type="hidden" name="return" value="<?= e($_SERVER['REQUEST_URI'] ?? '/') ?>">
-              <button type="submit" class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-soft text-brand transition hover:bg-brand hover:text-white" aria-label="Add <?= e($p['name']) ?> to cart"><?= icon('shopping-cart', 'h-[18px] w-[18px]') ?></button>
-            </form>
-          <?php endif; ?>
-        </div>
+    <article class="pc<?= $out ? ' oos' : '' ?>">
+      <div class="pc-badges">
+        <?php if ($low): ?><span class="badge b-low">Few left</span><?php endif; ?>
+        <?php if ($out): ?><span class="badge b-oos">Sold out</span><?php endif; ?>
       </div>
-    </div>
+      <?= wishlist_button($p['sku'], 'pc-wish') ?>
+      <div class="stage">
+        <a href="<?= e(product_url($p['sku'])) ?>" class="absolute inset-0" aria-label="<?= e($p['name']) ?>">
+          <?php if ($p['image_url'] && preg_match('#^https?://#i', $p['image_url'])): ?>
+            <img src="<?= e($p['image_url']) ?>" alt="<?= e($p['name']) ?>" loading="<?= $eager ? 'eager' : 'lazy' ?>" decoding="async" class="pc-main absolute inset-0 h-full w-full object-cover object-top<?= $second ? ' [.pc:hover_&]:opacity-0' : '' ?>">
+            <?php if ($second): /* second photo on hover, like most fashion stores */ ?>
+              <img src="<?= e($second) ?>" alt="" loading="lazy" decoding="async" class="absolute inset-0 h-full w-full object-cover object-top opacity-0 transition-opacity duration-500 [.pc:hover_&]:opacity-100">
+            <?php endif; ?>
+          <?php else: ?>
+            <?= product_image(null, $p['name'], 'absolute inset-0 !aspect-auto', false, $p['category']) ?>
+          <?php endif; ?>
+        </a>
+        <?php if (!$out): ?>
+          <form method="post" action="<?= e(url('cart.php')) ?>" class="pc-quick">
+            <?= csrf_field() ?>
+            <input type="hidden" name="action" value="add"><input type="hidden" name="sku" value="<?= e($p['sku']) ?>"><input type="hidden" name="quantity" value="1">
+            <input type="hidden" name="return" value="<?= e($_SERVER['REQUEST_URI'] ?? '/') ?>">
+            <button type="submit" class="btn btn-w btn-s w-full" aria-label="Add <?= e($p['name']) ?> to bag">Add to bag</button>
+          </form>
+        <?php endif; ?>
+      </div>
+      <div class="pc-body">
+        <p class="cap truncate !text-[10px] text-ink-soft"><?= e($p['brand'] ?: ($p['sub_category'] ?? '') ?: ($p['category'] ?: STORE_NAME)) ?></p>
+        <a href="<?= e(product_url($p['sku'])) ?>" class="pc-name line-clamp-2"><?= e($p['name']) ?></a>
+        <p class="mt-0.5 flex flex-wrap items-baseline gap-x-2"><span class="price"><?= e(format_price($p['price'], $p['currency'])) ?></span><?php if ($p['unit']): ?><span class="text-[11px] text-ink-soft">per <?= e($p['unit']) ?></span><?php endif; ?></p>
+      </div>
+    </article>
     <?php return (string) ob_get_clean();
 }
 
 function breadcrumbs(array $items): string
 {
-    $html = '<nav class="mb-5 flex flex-wrap items-center gap-1 text-sm text-ink-soft" aria-label="Breadcrumb">';
+    $html = '<nav class="crumbs mb-6" aria-label="Breadcrumb">';
     $last = count($items) - 1;
     foreach ($items as $i => [$label, $href]) {
         $html .= $i < $last && $href
-            ? '<a href="' . e($href) . '" class="hover:text-brand">' . e($label) . '</a>' . icon('chevron-right', 'h-3.5 w-3.5 text-muted')
-            : '<span class="font-medium text-ink">' . e($label) . '</span>';
+            ? '<a href="' . e($href) . '">' . e($label) . '</a><span aria-hidden="true">/</span>'
+            : '<b>' . e($label) . '</b>';
     }
     return $html . '</nav>';
 }
 
-function section_heading(string $title, ?string $subtitle = null, ?string $linkHref = null, string $linkLabel = 'View all'): string
+function section_heading(string $title, ?string $subtitle = null, ?string $linkHref = null, string $linkLabel = 'View all', ?string $eyebrow = null): string
 {
-    return '<div class="mb-6 flex items-end justify-between gap-4"><div>'
-        . '<h2 class="text-2xl font-extrabold tracking-tight sm:text-[1.75rem]">' . e($title) . '</h2>'
-        . ($subtitle ? '<p class="mt-1 text-sm text-ink-soft">' . e($subtitle) . '</p>' : '')
+    return '<div class="mb-7 flex flex-wrap items-end justify-between gap-4"><div class="flex flex-col gap-2">'
+        . ($eyebrow ? '<span class="eyebrow">' . e($eyebrow) . '</span>' : '')
+        . '<h2 class="h2">' . e($title) . '</h2>'
+        . ($subtitle ? '<p class="text-ink-soft">' . e($subtitle) . '</p>' : '')
         . '</div>'
-        . ($linkHref ? '<a href="' . e($linkHref) . '" class="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-brand hover:gap-2 transition-all">' . e($linkLabel) . icon('arrow-right', 'h-4 w-4') . '</a>' : '')
+        . ($linkHref ? '<a href="' . e($linkHref) . '" class="btn btn-o btn-s">' . e($linkLabel) . '</a>' : '')
         . '</div>';
 }
 
@@ -203,24 +176,18 @@ function state_select(string $name, string $value, ?string $error): string
 
 function order_status_pill(string $status): string
 {
-    $cls = [
-        'pending' => 'bg-amber-50 text-amber-700 ring-amber-200',
-        'confirmed' => 'bg-sky-50 text-sky-700 ring-sky-200',
-        'shipped' => 'bg-indigo-50 text-indigo-700 ring-indigo-200',
-        'completed' => 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-        'cancelled' => 'bg-slate-100 text-slate-600 ring-slate-200',
-    ][$status] ?? 'bg-amber-50 text-amber-700 ring-amber-200';
-    return '<span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-bold capitalize ring-1 ' . $cls . '">' . e($status) . '</span>';
+    $cls = ['pending' => 'b-low', 'confirmed' => 'b-info', 'shipped' => 'b-info', 'completed' => 'b-ok', 'cancelled' => 'b-warn'][$status] ?? 'b-low';
+    return '<span class="badge ' . $cls . '">' . e($status) . '</span>';
 }
 
 /** Empty-state panel. */
 function empty_state(string $iconName, string $title, string $text, string $ctaHref, string $ctaLabel): string
 {
-    return '<div class="card flex flex-col items-center px-6 py-16 text-center">'
-        . '<div class="flex h-20 w-20 items-center justify-center rounded-3xl bg-brand-soft text-brand">' . icon($iconName, 'h-9 w-9', 1.75) . '</div>'
-        . '<h2 class="mt-5 text-xl font-extrabold">' . e($title) . '</h2>'
-        . '<p class="mt-1 max-w-sm text-sm text-ink-soft">' . e($text) . '</p>'
-        . '<a href="' . e($ctaHref) . '" class="btn btn-primary mt-6">' . e($ctaLabel) . '</a></div>';
+    return '<div class="flex flex-col items-center px-6 py-16 text-center">'
+        . '<div class="flex h-[104px] w-[104px] items-center justify-center rounded-full bg-linen text-ink">' . icon($iconName, 'h-10 w-10', 1.3) . '</div>'
+        . '<h2 class="h3 mt-5">' . e($title) . '</h2>'
+        . '<p class="mt-2 max-w-sm text-sm text-ink-soft">' . e($text) . '</p>'
+        . '<a href="' . e($ctaHref) . '" class="btn btn-p mt-6">' . e($ctaLabel) . '</a></div>';
 }
 
 /**
@@ -232,20 +199,20 @@ function product_gallery(array $p): string
 {
     $images = $p['images'] ?? [];
     if (count($images) <= 1) {
-        return '<div class="zoom-frame overflow-hidden rounded-2xl" data-zoom>' . product_image($images[0] ?? $p['image_url'], $p['name'], 'rounded-2xl', true, $p['category'], 'p-8') . '</div>';
+        return '<div class="zoom-frame overflow-hidden rounded-[4px]" data-zoom>' . product_image($images[0] ?? $p['image_url'], $p['name'], '', true, $p['category'], 'p-8', true) . '</div>';
     }
     $n = count($images);
     $html = '<div class="relative" data-gallery>'
-        . '<div class="gallery-track flex snap-x snap-mandatory overflow-x-auto rounded-2xl outline-none focus-visible:ring-4 focus-visible:ring-brand/25" data-gallery-track tabindex="0" aria-label="Product photos">';
+        . '<div class="gallery-track flex snap-x snap-mandatory overflow-x-auto rounded-[4px] outline-none focus-visible:ring-4 focus-visible:ring-accent/25" data-gallery-track tabindex="0" aria-label="Product photos">';
     foreach ($images as $i => $src) {
         $html .= '<div id="img-' . ($i + 1) . '" class="zoom-frame w-full shrink-0 snap-center overflow-hidden" data-zoom data-slide="' . $i . '">'
-            . '<div class="relative aspect-square bg-white"><img src="' . e($src) . '" alt="' . e($p['name']) . ' — photo ' . ($i + 1) . ' of ' . $n . '" '
-            . 'loading="' . ($i === 0 ? 'eager' : 'lazy') . '" decoding="async" class="absolute inset-0 h-full w-full object-contain p-8"></div></div>';
+            . '<div class="relative aspect-[3/4] bg-linen"><img src="' . e($src) . '" alt="' . e($p['name']) . ' — photo ' . ($i + 1) . ' of ' . $n . '" '
+            . 'loading="' . ($i === 0 ? 'eager' : 'lazy') . '" decoding="async" class="absolute inset-0 h-full w-full object-cover object-top"></div></div>';
     }
     $html .= '</div>'
-        . '<button type="button" data-gallery-prev class="absolute left-3 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-ink shadow-md ring-1 ring-black/5 transition hover:scale-110 sm:flex" aria-label="Previous photo">' . icon('chevron-left', 'h-5 w-5') . '</button>'
-        . '<button type="button" data-gallery-next class="absolute right-3 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-ink shadow-md ring-1 ring-black/5 transition hover:scale-110 sm:flex" aria-label="Next photo">' . icon('chevron-right', 'h-5 w-5') . '</button>'
-        . '<span class="absolute bottom-3 left-1/2 z-10 -translate-x-1/2 rounded-full bg-ink/75 px-3 py-1 text-xs font-bold text-white" data-gallery-count>1 / ' . $n . '</span>'
+        . '<button type="button" data-gallery-prev class="absolute left-3 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white text-ink transition hover:bg-ink hover:text-white sm:flex" aria-label="Previous photo">' . icon('chevron-left', 'h-5 w-5') . '</button>'
+        . '<button type="button" data-gallery-next class="absolute right-3 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white text-ink transition hover:bg-ink hover:text-white sm:flex" aria-label="Next photo">' . icon('chevron-right', 'h-5 w-5') . '</button>'
+        . '<span class="absolute bottom-3 left-1/2 z-10 -translate-x-1/2 rounded-full bg-ink/80 px-3 py-1 text-xs font-semibold tracking-wide text-white" data-gallery-count>1 / ' . $n . '</span>'
         . '</div>';
     return $html;
 }

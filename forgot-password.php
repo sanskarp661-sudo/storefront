@@ -27,7 +27,7 @@ render_auth_page('Reset password', 'Forgot your password?', "Enter your account 
       <?= csrf_field() ?>
       <?= form_field('email', 'Email address', ['email' => $email], $error ? ['email' => $error] : [], ['type' => 'email', 'autocomplete' => 'email', 'required' => true, 'autofocus' => true]) ?>
       <button type="submit" class="btn btn-primary btn-lg w-full"><?= icon('mail', 'h-5 w-5') ?> Send reset link</button>
-      <a href="<?= e(url('login.php')) ?>" class="block text-center text-sm font-bold text-brand hover:underline">Back to sign in</a>
+      <a href="<?= e(url('login.php')) ?>" class="block text-center text-sm font-semibold text-ink underline underline-offset-4 hover:text-accent">Back to sign in</a>
     </form>
   <?php endif; ?>
 <?php });

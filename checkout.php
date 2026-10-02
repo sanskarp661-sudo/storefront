@@ -96,14 +96,14 @@ $key = checkout_key();
 if (!in_array($values['payment_method'], array_column($methods, 'id'), true)) $values['payment_method'] = $methods[0]['id'];
 
 render_page('Checkout', function () use ($cart, $key, $values, $errors, $formError, $issueMessages, $methods, $customer, $saved) {
-    $step = fn(int $n, string $title, string $sub = '') => '<div class="mb-5 flex items-center gap-3"><span class="flex h-8 w-8 items-center justify-center rounded-full bg-brand text-sm font-extrabold text-white">' . $n . '</span><div><h2 class="text-lg font-extrabold leading-tight">' . e($title) . '</h2>' . ($sub ? '<p class="text-xs text-ink-soft">' . e($sub) . '</p>' : '') . '</div></div>';
+    $step = fn(int $n, string $title, string $sub = '') => '<div class="mb-5 flex items-center gap-3"><span class="flex h-8 w-8 items-center justify-center rounded-full bg-brand text-sm font-semibold text-white">' . $n . '</span><div><h2 class="text-lg font-semibold leading-tight">' . e($title) . '</h2>' . ($sub ? '<p class="text-xs text-ink-soft">' . e($sub) . '</p>' : '') . '</div></div>';
     ?>
 <div class="container-page py-8">
   <div class="mb-6 flex flex-wrap items-end justify-between gap-3">
-    <h1 class="text-3xl font-extrabold tracking-tight">Checkout</h1>
+    <h1 class="h2">Checkout</h1>
     <ol class="hidden items-center gap-2 text-xs font-bold sm:flex">
       <li class="flex items-center gap-2 text-success"><span class="flex h-6 w-6 items-center justify-center rounded-full bg-success text-white"><?= icon('check', 'h-3.5 w-3.5', 3) ?></span> Cart</li><li class="h-px w-8 bg-success"></li>
-      <li class="flex items-center gap-2 text-brand"><span class="flex h-6 w-6 items-center justify-center rounded-full bg-brand text-white">2</span> Details</li><li class="h-px w-8 bg-line"></li>
+      <li class="flex items-center gap-2 text-ink"><span class="flex h-6 w-6 items-center justify-center rounded-full bg-brand text-white">2</span> Details</li><li class="h-px w-8 bg-line"></li>
       <li class="flex items-center gap-2 text-muted"><span class="flex h-6 w-6 items-center justify-center rounded-full bg-slate-200">3</span> Confirmation</li>
     </ol>
   </div>
@@ -126,8 +126,8 @@ render_page('Checkout', function () use ($cart, $key, $values, $errors, $formErr
 
       <?php if (!$customer): ?>
         <div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-brand-soft p-4 text-sm">
-          <p class="flex items-center gap-2 font-semibold text-brand-dark"><?= icon('circle-user', 'h-5 w-5') ?> Checking out as a guest. Have an account?</p>
-          <a href="<?= e(url('login.php', ['return' => url('checkout.php')])) ?>" class="btn btn-sm bg-white text-brand shadow-sm">Sign in for faster checkout</a>
+          <p class="flex items-center gap-2 font-semibold text-ink-dark"><?= icon('circle-user', 'h-5 w-5') ?> Checking out as a guest. Have an account?</p>
+          <a href="<?= e(url('login.php', ['return' => url('checkout.php')])) ?>" class="btn btn-sm bg-white text-ink shadow-sm">Sign in for faster checkout</a>
         </div>
       <?php endif; ?>
 
@@ -149,7 +149,7 @@ render_page('Checkout', function () use ($cart, $key, $values, $errors, $formErr
               <label class="cursor-pointer">
                 <input type="radio" name="address_id" value="<?= (int) $a['id'] ?>" <?= $values['address_id'] === (string) $a['id'] ? 'checked' : '' ?> class="peer sr-only">
                 <span class="block h-full rounded-2xl border-2 border-line p-4 text-sm transition peer-checked:border-brand peer-checked:bg-brand-soft/60 peer-focus-visible:ring-4 peer-focus-visible:ring-brand/20">
-                  <span class="flex items-center justify-between"><span class="rounded-md bg-white px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-brand ring-1 ring-line"><?= e($a['label']) ?></span><?= $a['is_default'] ? '<span class="text-[11px] font-bold text-success">Default</span>' : '' ?></span>
+                  <span class="flex items-center justify-between"><span class="rounded-md bg-white px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-ink ring-1 ring-line"><?= e($a['label']) ?></span><?= $a['is_default'] ? '<span class="text-[11px] font-bold text-success">Default</span>' : '' ?></span>
                   <span class="mt-2 block font-bold"><?= e($a['name']) ?></span>
                   <span class="block text-ink-soft"><?= e($a['address_line']) ?>, <?= e($a['city']) ?>, <?= e($a['state']) ?> <?= e($a['pincode']) ?></span>
                   <span class="block text-ink-soft"><?= e($a['phone']) ?></span>
@@ -158,7 +158,7 @@ render_page('Checkout', function () use ($cart, $key, $values, $errors, $formErr
             <?php endforeach; ?>
             <label class="cursor-pointer">
               <input type="radio" name="address_id" value="new" <?= $values['address_id'] === 'new' ? 'checked' : '' ?> class="peer sr-only">
-              <span class="flex h-full min-h-[7rem] items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-line p-4 text-sm font-bold text-brand transition peer-checked:border-brand peer-checked:bg-brand-soft/60"><?= icon('plus', 'h-5 w-5') ?> Deliver to a new address</span>
+              <span class="flex h-full min-h-[7rem] items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-line p-4 text-sm font-bold text-ink transition peer-checked:border-brand peer-checked:bg-brand-soft/60"><?= icon('plus', 'h-5 w-5') ?> Deliver to a new address</span>
             </label>
           </div>
         <?php else: ?>
@@ -173,7 +173,7 @@ render_page('Checkout', function () use ($cart, $key, $values, $errors, $formErr
                 <?php foreach (['Home' => 'house', 'Office' => 'store', 'Other' => 'map-pin'] as $label => $ic): ?>
                   <label class="cursor-pointer">
                     <input type="radio" name="label" value="<?= $label ?>" <?= $values['label'] === $label ? 'checked' : '' ?> class="peer sr-only">
-                    <span class="inline-flex items-center gap-1.5 rounded-xl border-2 border-line px-4 py-2 text-sm font-semibold peer-checked:border-brand peer-checked:bg-brand-soft peer-checked:text-brand"><?= icon($ic, 'h-4 w-4') ?> <?= $label ?></span>
+                    <span class="inline-flex items-center gap-1.5 rounded-xl border-2 border-line px-4 py-2 text-sm font-semibold peer-checked:border-brand peer-checked:bg-brand-soft peer-checked:text-ink"><?= icon($ic, 'h-4 w-4') ?> <?= $label ?></span>
                   </label>
                 <?php endforeach; ?>
               </div>
@@ -182,7 +182,7 @@ render_page('Checkout', function () use ($cart, $key, $values, $errors, $formErr
             <?= form_field('city', 'City', $values, $errors, ['autocomplete' => 'address-level2', 'maxlength' => 80]) ?>
             <?= form_field('pincode', 'PIN code', $values, $errors, ['autocomplete' => 'postal-code', 'inputmode' => 'numeric', 'maxlength' => 6]) ?>
             <?= state_select('state', $values['state'], $errors['state'] ?? null) ?>
-            <div><span class="field-label">Country</span><div class="field-input bg-slate-50 text-ink-soft">India</div></div>
+            <div><span class="field-label">Country</span><div class="field-input bg-linen text-ink-soft">India</div></div>
             <?php if ($customer): ?>
               <label class="flex items-center gap-2 text-sm font-medium sm:col-span-2"><input type="hidden" name="save_address" value="0"><input type="checkbox" name="save_address" value="1" <?= $values['save_address'] === '1' ? 'checked' : '' ?> class="h-4 w-4 accent-[#4f46e5]"> Save this address to my account</label>
             <?php endif; ?>
@@ -212,12 +212,12 @@ render_page('Checkout', function () use ($cart, $key, $values, $errors, $formErr
 
     <aside class="space-y-4 lg:sticky lg:top-36 lg:self-start">
       <div class="card p-6">
-        <div class="flex items-center justify-between"><h2 class="text-lg font-extrabold">Order summary</h2><a href="<?= e(url('cart.php')) ?>" class="text-sm font-bold text-brand hover:underline">Edit</a></div>
+        <div class="flex items-center justify-between"><h2 class="h4">Order summary</h2><a href="<?= e(url('cart.php')) ?>" class="text-sm font-semibold text-ink underline underline-offset-4 hover:text-accent">Edit</a></div>
         <ul class="mt-5 space-y-4">
           <?php foreach ($cart['lines'] as $l): $p = $l['product']; ?>
             <li class="flex items-center gap-3">
               <div class="relative w-16 shrink-0">
-                <div class="overflow-hidden rounded-xl border border-line"><?= product_image($p['image_url'], $p['name'], '', false, $p['category'], 'p-1.5') ?></div>
+                <div class="overflow-hidden rounded-xl border border-line"><?= product_image($p['image_url'], $p['name'], '', false, $p['category'], 'p-1.5', true) ?></div>
                 <span class="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-ink px-1 text-[11px] font-bold text-white"><?= $l['quantity'] ?></span>
               </div>
               <p class="line-clamp-2 min-w-0 flex-1 text-sm font-semibold"><?= e($p['name']) ?></p>
@@ -231,7 +231,7 @@ render_page('Checkout', function () use ($cart, $key, $values, $errors, $formErr
         </dl>
         <div class="mt-4 flex items-end justify-between border-t border-dashed border-line pt-4">
           <span class="font-bold">Total <span class="block text-xs font-medium text-ink-soft">excl. GST · pay on delivery</span></span>
-          <span class="text-2xl font-extrabold"><?= e(format_price($cart['subtotal'], $cart['currency'])) ?></span>
+          <span class="text-2xl font-semibold"><?= e(format_price($cart['subtotal'], $cart['currency'])) ?></span>
         </div>
         <button type="submit" class="btn btn-accent btn-lg mt-6 w-full" data-submit-label="Placing your order…"><?= icon('lock', 'h-5 w-5') ?> <span>Place order</span></button>
         <p class="mt-3 text-center text-xs leading-relaxed text-ink-soft">By placing your order you agree to pay <?= count($methods) === 1 && $methods[0]['id'] === 'cod' ? 'in cash on delivery' : 'with the method selected' ?>. Prices are confirmed by our system; applicable GST is added on your invoice.</p>

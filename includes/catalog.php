@@ -142,12 +142,35 @@ function get_categories(): array
 function get_subcategories(string $category): array
 {
     $rows = db_all(
-        "SELECT sub_category AS name, COUNT(*) AS n FROM products
-          WHERE status = 'active' AND category = ? AND sub_category IS NOT NULL AND sub_category <> ''
-          GROUP BY sub_category ORDER BY sub_category",
+        "SELECT p.sub_category AS name, COUNT(*) AS n,
+                (SELECT p2.image_url FROM products p2
+                  WHERE p2.category = p.category AND p2.sub_category = p.sub_category AND p2.status = 'active' AND p2.image_url IS NOT NULL
+                  ORDER BY p2.available_quantity > 0 DESC, p2.erp_updated_at DESC LIMIT 1) AS image_url
+           FROM products p
+          WHERE p.status = 'active' AND p.category = ? AND p.sub_category IS NOT NULL AND p.sub_category <> ''
+          GROUP BY p.category, p.sub_category ORDER BY p.sub_category",
         [$category]
     );
-    return array_map(fn($r) => ['name' => $r['name'], 'count' => (int) $r['n']], $rows);
+    return array_map(fn($r) => ['name' => $r['name'], 'count' => (int) $r['n'], 'image_url' => $r['image_url']], $rows);
+}
+
+/** Categories with their sub-categories (for the header's dropdown menus); never breaks the page. */
+function nav_tree(): array
+{
+    static $cache = null;
+    if ($cache !== null) return $cache;
+    try {
+        $subs = [];
+        foreach (db_all(
+            "SELECT category, sub_category, COUNT(*) AS n FROM products
+              WHERE status = 'active' AND category IS NOT NULL AND sub_category IS NOT NULL AND sub_category <> ''
+              GROUP BY category, sub_category ORDER BY sub_category"
+        ) as $r) $subs[$r['category']][] = ['name' => $r['sub_category'], 'count' => (int) $r['n']];
+        return $cache = array_map(fn($c) => $c + ['subs' => $subs[$c['name']] ?? []], get_categories());
+    } catch (Throwable $e) {
+        error_log('[storefront] nav tree failed: ' . $e->getMessage());
+        return $cache = [];
+    }
 }
 
 /** Category names for navigation; never breaks the page if the database is unavailable. */

@@ -61,11 +61,11 @@ render_page('Your cart', function () use ($cart, $suggestions) {
 <div class="container-page py-8">
   <div class="mb-6 flex flex-wrap items-end justify-between gap-3">
     <div>
-      <h1 class="text-3xl font-extrabold tracking-tight">Shopping cart</h1>
+      <h1 class="h2">Shopping cart</h1>
       <?php if ($cart['lines']): ?><p class="mt-1 text-sm text-ink-soft"><?= $itemCount ?> item<?= $itemCount === 1 ? '' : 's' ?></p><?php endif; ?>
     </div>
     <?php if ($cart['lines']): ?><ol class="hidden items-center gap-2 text-xs font-bold sm:flex">
-      <li class="flex items-center gap-2 text-brand"><span class="flex h-6 w-6 items-center justify-center rounded-full bg-brand text-white">1</span> Cart</li><li class="h-px w-8 bg-line"></li>
+      <li class="flex items-center gap-2 text-ink"><span class="flex h-6 w-6 items-center justify-center rounded-full bg-brand text-white">1</span> Cart</li><li class="h-px w-8 bg-line"></li>
       <li class="flex items-center gap-2 text-muted"><span class="flex h-6 w-6 items-center justify-center rounded-full bg-slate-200">2</span> Details</li><li class="h-px w-8 bg-line"></li>
       <li class="flex items-center gap-2 text-muted"><span class="flex h-6 w-6 items-center justify-center rounded-full bg-slate-200">3</span> Confirmation</li>
     </ol><?php endif; ?>
@@ -79,25 +79,25 @@ render_page('Your cart', function () use ($cart, $suggestions) {
         <form method="post" action="<?= e(url('cart.php')) ?>" id="cart-form"><?= csrf_field() ?><input type="hidden" name="action" value="update"></form>
         <?php foreach ($cart['lines'] as $l): $p = $l['product']; $fid = md5($p['sku']); ?>
           <div class="flex gap-4 p-4 sm:p-5">
-            <a href="<?= e(product_url($p['sku'])) ?>" class="w-24 shrink-0 overflow-hidden rounded-2xl border border-line sm:w-32"><?= product_image($p['image_url'], $p['name'], '', false, $p['category'], 'p-2') ?></a>
+            <a href="<?= e(product_url($p['sku'])) ?>" class="w-24 shrink-0 overflow-hidden rounded-2xl border border-line sm:w-32"><?= product_image($p['image_url'], $p['name'], '', false, $p['category'], 'p-2', true) ?></a>
             <div class="flex min-w-0 flex-1 flex-col">
               <div class="flex justify-between gap-4">
                 <div class="min-w-0">
-                  <?php if ($p['brand']): ?><p class="text-[11px] font-bold uppercase tracking-wider text-brand"><?= e($p['brand']) ?></p><?php endif; ?>
-                  <a href="<?= e(product_url($p['sku'])) ?>" class="line-clamp-2 font-bold hover:text-brand"><?= e($p['name']) ?></a>
+                  <?php if ($p['brand']): ?><p class="text-[11px] font-bold uppercase tracking-wider text-ink"><?= e($p['brand']) ?></p><?php endif; ?>
+                  <a href="<?= e(product_url($p['sku'])) ?>" class="line-clamp-2 font-bold hover:text-ink"><?= e($p['name']) ?></a>
                   <p class="mt-0.5 text-sm text-ink-soft"><?= e(format_price($p['price'], $p['currency'])) ?><?= $p['unit'] ? ' / ' . e($p['unit']) : '' ?></p>
                   <?php if ($l['max'] <= 5): ?><p class="mt-1 text-xs font-bold text-accent-dark">Only <?= $l['max'] ?> left in stock</p><?php endif; ?>
                 </div>
-                <p class="shrink-0 text-lg font-extrabold"><?= e(format_price($l['line_total'], $p['currency'])) ?></p>
+                <p class="shrink-0 text-lg font-semibold"><?= e(format_price($l['line_total'], $p['currency'])) ?></p>
               </div>
               <div class="mt-auto flex flex-wrap items-center gap-x-4 gap-y-2 pt-3">
                 <div class="qty inline-flex h-10 items-center rounded-xl border border-line bg-white">
-                  <button type="button" data-step="-1" class="flex h-full w-10 items-center justify-center rounded-l-xl hover:bg-slate-50" aria-label="Decrease quantity"><?= icon('minus', 'h-4 w-4') ?></button>
+                  <button type="button" data-step="-1" class="flex h-full w-10 items-center justify-center rounded-l-xl hover:bg-linen" aria-label="Decrease quantity"><?= icon('minus', 'h-4 w-4') ?></button>
                   <input form="cart-form" type="number" name="qty[<?= e($p['sku']) ?>]" value="<?= $l['quantity'] ?>" min="0" max="<?= $l['max'] ?>" data-autosubmit-change aria-label="Quantity for <?= e($p['name']) ?>" class="w-10 bg-transparent text-center text-sm font-bold outline-none">
-                  <button type="button" data-step="1" class="flex h-full w-10 items-center justify-center rounded-r-xl hover:bg-slate-50" aria-label="Increase quantity"><?= icon('plus', 'h-4 w-4') ?></button>
+                  <button type="button" data-step="1" class="flex h-full w-10 items-center justify-center rounded-r-xl hover:bg-linen" aria-label="Increase quantity"><?= icon('plus', 'h-4 w-4') ?></button>
                 </div>
                 <form method="post" action="<?= e(url('cart.php')) ?>"><?= csrf_field() ?><input type="hidden" name="action" value="save"><input type="hidden" name="sku" value="<?= e($p['sku']) ?>">
-                  <button class="inline-flex items-center gap-1.5 text-sm font-semibold text-ink-soft hover:text-brand"><?= icon('heart', 'h-4 w-4') ?> Save for later</button></form>
+                  <button class="inline-flex items-center gap-1.5 text-sm font-semibold text-ink-soft hover:text-ink"><?= icon('heart', 'h-4 w-4') ?> Save for later</button></form>
                 <form method="post" action="<?= e(url('cart.php')) ?>"><?= csrf_field() ?><input type="hidden" name="action" value="remove"><input type="hidden" name="sku" value="<?= e($p['sku']) ?>">
                   <button class="inline-flex items-center gap-1.5 text-sm font-semibold text-ink-soft hover:text-rose-600"><?= icon('trash-2', 'h-4 w-4') ?> Remove</button></form>
               </div>
@@ -105,14 +105,14 @@ render_page('Your cart', function () use ($cart, $suggestions) {
           </div>
         <?php endforeach; ?>
         <div class="flex items-center justify-between p-4 sm:px-5">
-          <a href="<?= e(url('products.php')) ?>" class="inline-flex items-center gap-1.5 text-sm font-bold text-brand"><?= icon('arrow-left', 'h-4 w-4') ?> Continue shopping</a>
+          <a href="<?= e(url('products.php')) ?>" class="inline-flex items-center gap-1.5 text-sm font-bold text-ink"><?= icon('arrow-left', 'h-4 w-4') ?> Continue shopping</a>
           <button type="submit" form="cart-form" class="btn btn-outline btn-sm" data-hide-with-js>Update cart</button>
         </div>
       </div>
 
       <aside class="space-y-4 lg:sticky lg:top-36 lg:self-start">
         <div class="card p-6">
-          <h2 class="text-lg font-extrabold">Order summary</h2>
+          <h2 class="h4">Order summary</h2>
           <dl class="mt-5 space-y-3 text-sm">
             <div class="flex justify-between"><dt class="text-ink-soft">Items (<?= $itemCount ?>)</dt><dd class="font-semibold"><?= e(format_price($cart['subtotal'], $cart['currency'])) ?></dd></div>
             <div class="flex justify-between"><dt class="text-ink-soft">GST</dt><dd class="text-ink-soft">On invoice</dd></div>
@@ -120,7 +120,7 @@ render_page('Your cart', function () use ($cart, $suggestions) {
           </dl>
           <div class="mt-5 flex items-end justify-between border-t border-dashed border-line pt-5">
             <span class="font-bold">Total <span class="block text-xs font-medium text-ink-soft">excl. GST</span></span>
-            <span class="text-2xl font-extrabold"><?= e(format_price($cart['subtotal'], $cart['currency'])) ?></span>
+            <span class="text-2xl font-semibold"><?= e(format_price($cart['subtotal'], $cart['currency'])) ?></span>
           </div>
           <a href="<?= e(url('checkout.php')) ?>" class="btn btn-accent btn-lg mt-6 w-full">Proceed to checkout <?= icon('arrow-right', 'h-5 w-5') ?></a>
           <p class="mt-3 flex items-center justify-center gap-1.5 text-xs text-ink-soft"><?= icon('lock', 'h-3.5 w-3.5') ?> Final prices are confirmed when you place the order</p>

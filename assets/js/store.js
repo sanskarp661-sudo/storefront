@@ -170,7 +170,7 @@
               });
               (data.products || []).forEach(function (p) {
                 var img = p.image
-                  ? '<img src="' + esc(p.image) + '" alt="" class="h-11 w-11 rounded-lg border border-line bg-white object-contain p-1">'
+                  ? '<img src="' + esc(p.image) + '" alt="" class="h-11 w-11 rounded-lg border border-line bg-white object-cover object-top">'
                   : '<span class="flex h-11 w-11 items-center justify-center rounded-lg bg-brand-soft text-xs font-extrabold text-brand">' + esc((p.name || "?").slice(0, 2).toUpperCase()) + "</span>";
                 html += '<a href="' + esc(p.url) + '" class="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50">' + img +
                   '<span class="min-w-0 flex-1"><span class="block truncate text-sm font-semibold">' + esc(p.name) + '</span><span class="block text-xs text-ink-soft">' + esc(p.category || "") + "</span></span>" +

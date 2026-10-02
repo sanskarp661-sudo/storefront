@@ -20,7 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-render_auth_page('Create account', 'Create your account', 'Already have one? <a href="' . e(url('login.php', ['return' => $return])) . '" class="font-bold text-brand hover:underline">Sign in</a>', function () use ($errors, $values, $return) { ?>
+render_auth_page('Create account', 'Create your account', 'Already have one? <a href="' . e(url('login.php', ['return' => $return])) . '" class="font-semibold text-ink underline underline-offset-4 hover:text-accent">Sign in</a>', function () use ($errors, $values, $return) { ?>
   <form method="post" action="<?= e(url('register.php')) ?>" class="space-y-4" novalidate>
     <?= csrf_field() ?><input type="hidden" name="return" value="<?= e($return) ?>">
     <div class="absolute -left-[9999px]" aria-hidden="true"><input type="text" name="website" tabindex="-1" autocomplete="off"></div>

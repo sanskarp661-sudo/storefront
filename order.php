@@ -50,20 +50,19 @@ render_page('Your order', function () use ($order, $items, $ref, $state, $placed
     $banner = function (string $icon, string $tone, string $title, string $html) {
         $tones = ['neutral' => 'bg-white ring-line', 'warn' => 'bg-amber-50 text-amber-900 ring-amber-200', 'error' => 'bg-rose-50 text-rose-900 ring-rose-200'];
         echo '<div class="mb-6 flex gap-4 rounded-3xl p-6 ring-1 ' . $tones[$tone] . '"><div class="shrink-0">' . icon($icon, 'h-7 w-7') . '</div>'
-            . '<div><h1 class="text-lg font-extrabold">' . e($title) . '</h1><p class="mt-1 text-sm opacity-90">' . $html . '</p></div></div>';
+            . '<div><h1 class="h4">' . e($title) . '</h1><p class="mt-1 text-sm opacity-90">' . $html . '</p></div></div>';
     };
     ?>
 <div class="container-page max-w-6xl py-8">
   <?php if ($state === 'submitted' && $placed): ?>
-    <div class="relative mb-6 overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-emerald-500 to-teal-600 p-7 text-white shadow-lift sm:p-9">
-      <div class="hero-grid absolute inset-0"></div>
+    <div class="relative mb-8 overflow-hidden rounded-[6px] bg-[#141414] p-7 text-white sm:p-10">
       <div class="relative flex flex-wrap items-center gap-5">
-        <span class="flex h-16 w-16 items-center justify-center rounded-full bg-white text-emerald-600 shadow-lg"><?= icon('circle-check', 'h-9 w-9') ?></span>
+        <span class="flex h-16 w-16 items-center justify-center rounded-full bg-white text-ink"><?= icon('check', 'h-8 w-8', 2) ?></span>
         <div class="flex-1">
-          <h1 class="text-2xl font-extrabold tracking-tight sm:text-3xl">Order placed — thank you, <?= e(explode(' ', $order['customer_name'])[0]) ?>!</h1>
-          <p class="mt-1 text-white/85">Order <span class="font-mono font-bold text-white"><?= e($ref) ?></span> is confirmed in our system. Pay in cash when it's delivered.</p>
+          <h1 class="h2 text-white">Order placed — thank you, <?= e(explode(' ', $order['customer_name'])[0]) ?>!</h1>
+          <p class="mt-2 text-[#cfc8bd]">Order <span class="font-mono font-bold text-white"><?= e($ref) ?></span> is confirmed in our system. Pay in cash when it's delivered.</p>
         </div>
-        <a href="<?= e(url('products.php')) ?>" class="btn bg-white text-emerald-700 hover:bg-emerald-50">Continue shopping</a>
+        <a href="<?= e(url('products.php')) ?>" class="btn btn-w">Continue shopping</a>
       </div>
     </div>
   <?php elseif ($state === 'submitting'): ?>
@@ -77,7 +76,7 @@ render_page('Your order', function () use ($order, $items, $ref, $state, $placed
   <div class="card mb-6 flex flex-wrap items-center justify-between gap-4 p-6">
     <div>
       <p class="text-xs font-bold uppercase tracking-wider text-muted">Order</p>
-      <h2 class="font-mono text-2xl font-extrabold"><?= e($ref) ?></h2>
+      <h2 class="font-mono text-2xl font-semibold !font-sans"><?= e($ref) ?></h2>
       <p class="mt-1 text-sm text-ink-soft">Placed <?= e(format_date($order['order_date'] ?: $order['created_at'])) ?><?php if ($order['erp_order_no']): ?> · Reference <span class="font-mono"><?= e($order['website_order_id']) ?></span><?php endif; ?></p>
     </div>
     <div class="flex items-center gap-3">
@@ -90,18 +89,18 @@ render_page('Your order', function () use ($order, $items, $ref, $state, $placed
     <div class="space-y-6">
       <?php if ($state === 'submitted'): ?>
         <section class="card p-6 sm:p-8">
-          <h2 class="mb-7 text-lg font-extrabold">Order status</h2>
+          <h2 class="h4 mb-7">Order status</h2>
           <?php require __DIR__ . '/includes/templates/status_timeline.php'; ?>
           <?php if ($order['dn_no'] || $order['invoice_no']): ?>
             <div class="mt-8 grid gap-4 border-t border-line pt-6 sm:grid-cols-2">
               <?php if ($order['dn_no']): ?>
-                <div class="flex gap-3 rounded-2xl bg-surface p-4"><span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-brand shadow-sm"><?= icon('truck', 'h-5 w-5') ?></span><div class="text-sm">
+                <div class="flex gap-3 rounded-2xl bg-surface p-4"><span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-ink shadow-sm"><?= icon('truck', 'h-5 w-5') ?></span><div class="text-sm">
                   <p class="font-bold">Delivery <?= e($order['dn_no']) ?></p>
                   <p class="capitalize text-ink-soft"><?= e($order['dn_status'] ?: 'pending') ?><?= $order['delivered_at'] ? ' · ' . e(format_date($order['delivered_at'])) : '' ?></p>
                 </div></div>
               <?php endif; ?>
               <?php if ($order['invoice_no']): ?>
-                <div class="flex gap-3 rounded-2xl bg-surface p-4"><span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-brand shadow-sm"><?= icon('file-text', 'h-5 w-5') ?></span><div class="text-sm">
+                <div class="flex gap-3 rounded-2xl bg-surface p-4"><span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-ink shadow-sm"><?= icon('file-text', 'h-5 w-5') ?></span><div class="text-sm">
                   <p class="font-bold">Invoice <?= e($order['invoice_no']) ?></p>
                   <p class="text-ink-soft"><span class="capitalize"><?= e($order['invoice_status']) ?></span> · <?= e(format_price((float) $order['invoice_amount_paid'], $currency)) ?> paid of <?= e(format_price((float) $order['invoice_total'], $currency)) ?></p>
                 </div></div>
@@ -112,16 +111,16 @@ render_page('Your order', function () use ($order, $items, $ref, $state, $placed
       <?php endif; ?>
 
       <section class="card overflow-hidden">
-        <h2 class="border-b border-line px-6 py-4 text-lg font-extrabold">Items (<?= array_sum(array_map(fn($i) => (int) $i['quantity'], $items)) ?>)</h2>
+        <h2 class="h4 border-b border-line px-6 py-4">Items (<?= array_sum(array_map(fn($i) => (int) $i['quantity'], $items)) ?>)</h2>
         <ul class="divide-y divide-line">
           <?php foreach ($items as $it): ?>
             <li class="flex items-center gap-4 px-6 py-4">
-              <a href="<?= e(product_url($it['sku'])) ?>" class="w-16 shrink-0 overflow-hidden rounded-xl border border-line"><?= product_image($it['image_url'], $it['name'], '', false, null, 'p-1.5') ?></a>
+              <a href="<?= e(product_url($it['sku'])) ?>" class="w-16 shrink-0 overflow-hidden rounded-xl border border-line"><?= product_image($it['image_url'], $it['name'], '', false, null, 'p-1.5', true) ?></a>
               <div class="min-w-0 flex-1">
-                <a href="<?= e(product_url($it['sku'])) ?>" class="font-bold hover:text-brand"><?= e($it['name']) ?></a>
+                <a href="<?= e(product_url($it['sku'])) ?>" class="font-bold hover:text-ink"><?= e($it['name']) ?></a>
                 <p class="text-sm text-ink-soft">Qty <?= (int) $it['quantity'] ?> × <?= e(format_price((float) $it['unit_price'], $currency)) ?></p>
               </div>
-              <p class="font-extrabold"><?= e(format_price((float) $it['unit_price'] * (int) $it['quantity'], $currency)) ?></p>
+              <p class="font-semibold"><?= e(format_price((float) $it['unit_price'] * (int) $it['quantity'], $currency)) ?></p>
             </li>
           <?php endforeach; ?>
         </ul>
@@ -134,7 +133,7 @@ render_page('Your order', function () use ($order, $items, $ref, $state, $placed
           <div class="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-brand/50 blur-2xl"></div>
           <div class="relative">
             <span class="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10"><?= icon('gift', 'h-5 w-5') ?></span>
-            <h2 class="mt-4 text-lg font-extrabold">Save your details for next time</h2>
+            <h2 class="h4 mt-4">Save your details for next time</h2>
             <p class="mt-1 text-sm text-white/70">Set a password to create your account. This order and your address will be saved to it.</p>
             <form method="post" action="<?= e($_SERVER['REQUEST_URI']) ?>" class="mt-4 space-y-3">
               <?= csrf_field() ?><input type="hidden" name="action" value="create_account">
@@ -147,8 +146,8 @@ render_page('Your order', function () use ($order, $items, $ref, $state, $placed
         </section>
       <?php endif; ?>
       <section class="card p-6 text-sm">
-        <h2 class="mb-4 text-base font-extrabold">Payment summary</h2>
-        <div class="flex justify-between"><span class="text-ink-soft">Order total (excl. GST)</span><span class="text-lg font-extrabold"><?= e(format_price($total, $currency)) ?></span></div>
+        <h2 class="h4 mb-4">Payment summary</h2>
+        <div class="flex justify-between"><span class="text-ink-soft">Order total (excl. GST)</span><span class="text-lg font-semibold"><?= e(format_price($total, $currency)) ?></span></div>
         <?php if ($order['erp_total_amount'] === null): ?><p class="mt-1 text-xs text-ink-soft">Estimated — final amount is confirmed by our team.</p><?php endif; ?>
         <p class="mt-2 text-xs text-ink-soft">Applicable GST will be shown on your invoice.</p>
         <div class="mt-5 flex items-start gap-3 rounded-2xl bg-emerald-50 p-4 ring-1 ring-emerald-200">
@@ -158,7 +157,7 @@ render_page('Your order', function () use ($order, $items, $ref, $state, $placed
         </div>
       </section>
       <section class="card p-6 text-sm">
-        <h2 class="mb-3 flex items-center gap-2 text-base font-extrabold"><?= icon('map-pin', 'h-5 w-5 text-brand') ?> Delivery address</h2>
+        <h2 class="h4 mb-3 flex items-center gap-2"><?= icon('map-pin', 'h-5 w-5 text-ink') ?> Delivery address</h2>
         <address class="not-italic leading-relaxed text-ink-soft">
           <span class="font-bold text-ink"><?= e($order['customer_name']) ?></span><br>
           <?= e($order['ship_address_line']) ?><br>
@@ -166,10 +165,10 @@ render_page('Your order', function () use ($order, $items, $ref, $state, $placed
           <?= e($order['ship_country']) ?>
           <?php if ($order['customer_phone']): ?><br><?= e($order['customer_phone']) ?><?php endif; ?>
         </address>
-        <?php if ($order['notes']): ?><h3 class="mb-1 mt-4 font-bold">Notes</h3><p class="whitespace-pre-line text-ink-soft"><?= e($order['notes']) ?></p><?php endif; ?>
+        <?php if ($order['notes']): ?><h3 class="cap mb-1 mt-4">Notes</h3><p class="whitespace-pre-line text-ink-soft"><?= e($order['notes']) ?></p><?php endif; ?>
       </section>
       <?php if (SUPPORT_EMAIL): ?>
-        <a href="mailto:<?= e(SUPPORT_EMAIL) ?>?subject=<?= rawurlencode('Order ' . $ref) ?>" class="card flex items-center gap-3 p-5 text-sm transition hover:shadow-lift"><span class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-soft text-brand"><?= icon('headset', 'h-5 w-5') ?></span><span><span class="block font-bold">Need help with this order?</span><span class="text-ink-soft"><?= e(SUPPORT_EMAIL) ?></span></span></a>
+        <a href="mailto:<?= e(SUPPORT_EMAIL) ?>?subject=<?= rawurlencode('Order ' . $ref) ?>" class="card flex items-center gap-3 p-5 text-sm transition hover:shadow-lift"><span class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-soft text-ink"><?= icon('headset', 'h-5 w-5') ?></span><span><span class="block font-bold">Need help with this order?</span><span class="text-ink-soft"><?= e(SUPPORT_EMAIL) ?></span></span></a>
       <?php endif; ?>
     </aside>
   </div>

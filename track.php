@@ -31,15 +31,14 @@ render_page('Track your order', function () use ($error, $reference, $email, $re
     $customer = current_customer(); ?>
 <div class="container-page py-8 lg:py-12">
   <div class="mx-auto grid max-w-5xl gap-6 lg:grid-cols-[1.1fr_1fr]">
-    <div class="relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-brand via-indigo-600 to-violet-700 p-8 text-white shadow-lift sm:p-10">
-      <div class="hero-grid absolute inset-0"></div>
+    <div class="relative overflow-hidden rounded-[6px] bg-[#141414] p-8 text-white sm:p-10">
       <div class="relative">
-        <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15 backdrop-blur"><?= icon('truck', 'h-7 w-7') ?></span>
-        <h1 class="mt-6 text-3xl font-extrabold tracking-tight sm:text-4xl">Track your order</h1>
-        <p class="mt-2 max-w-sm text-white/80">Enter your order number and the email you used at checkout to see live status, delivery and invoice details.</p>
+        <span class="flex h-14 w-14 items-center justify-center rounded-full bg-white/10"><?= icon('truck', 'h-7 w-7', 1.4) ?></span>
+        <h1 class="h2 mt-6 text-white">Track your order</h1>
+        <p class="mt-3 max-w-sm text-[#cfc8bd]">Enter your order number and the email you used at checkout to see live status, delivery and invoice details.</p>
         <ul class="mt-8 space-y-3 text-sm">
           <?php foreach (['Your order number starts with SO- or WEB-', "It's shown on your order confirmation page", 'Status updates as soon as our team processes it'] as $t): ?>
-            <li class="flex items-center gap-2"><span class="text-emerald-300"><?= icon('circle-check', 'h-5 w-5') ?></span> <?= e($t) ?></li>
+            <li class="flex items-center gap-2"><span class="text-white"><?= icon('check', 'h-4 w-4', 2) ?></span> <?= e($t) ?></li>
           <?php endforeach; ?>
         </ul>
       </div>
@@ -57,15 +56,15 @@ render_page('Track your order', function () use ($error, $reference, $email, $re
           <input id="email" name="email" type="email" required value="<?= e($email) ?>" autocomplete="email" placeholder="you@example.com" class="field-input">
         </div>
         <button type="submit" class="btn btn-primary btn-lg w-full"><?= icon('search', 'h-5 w-5') ?> Find my order</button>
-        <?php if (!$customer): ?><p class="text-center text-sm text-ink-soft">Have an account? <a href="<?= e(url('login.php', ['return' => url('account.php', ['tab' => 'orders'])])) ?>" class="font-bold text-brand hover:underline">Sign in to see all your orders</a></p><?php endif; ?>
+        <?php if (!$customer): ?><p class="text-center text-sm text-ink-soft">Have an account? <a href="<?= e(url('login.php', ['return' => url('account.php', ['tab' => 'orders'])])) ?>" class="font-semibold text-ink underline underline-offset-4 hover:text-accent">Sign in to see all your orders</a></p><?php endif; ?>
       </form>
       <?php if ($recent): ?>
         <section class="card overflow-hidden">
-          <h2 class="border-b border-line px-6 py-4 font-extrabold">Orders placed in this browser</h2>
+          <h2 class="h4 border-b border-line px-6 py-4">Orders placed in this browser</h2>
           <ul class="divide-y divide-line">
             <?php foreach (array_reverse($recent, true) as $id => $o): ?>
-              <li><a href="<?= e(order_url((string) $id, $o['key'])) ?>" class="flex items-center justify-between px-6 py-4 text-sm hover:bg-slate-50">
-                <span class="flex items-center gap-3"><span class="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-soft text-brand"><?= icon('package', 'h-4 w-4') ?></span><span class="font-mono font-bold"><?= e((string) $id) ?></span></span>
+              <li><a href="<?= e(order_url((string) $id, $o['key'])) ?>" class="flex items-center justify-between px-6 py-4 text-sm hover:bg-linen">
+                <span class="flex items-center gap-3"><span class="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-soft text-ink"><?= icon('package', 'h-4 w-4') ?></span><span class="font-mono font-bold"><?= e((string) $id) ?></span></span>
                 <span class="flex items-center gap-2 text-ink-soft"><?= e(format_date($o['placed_at'])) ?> <?= icon('chevron-right', 'h-4 w-4') ?></span>
               </a></li>
             <?php endforeach; ?>
